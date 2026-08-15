@@ -12,7 +12,7 @@ PROJECT-MEMORY.md
 admin/
 install/
 var/
-index.php
+/index.php
 install.php
 LICENSE.txt
 router.php
