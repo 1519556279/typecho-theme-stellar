@@ -1,0 +1,23 @@
+# 站点私有数据（含密钥/密码/数据库，绝不入公开仓库）
+config.inc.php
+usr/
+*.db
+*.db-journal
+PROJECT-MEMORY.md
+
+# 会话/宿主元数据
+.reasonix/
+
+# Typecho 核心程序（官方开源，不入仓库）
+admin/
+install/
+var/
+index.php
+install.php
+LICENSE.txt
+router.php
+
+# 系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
