@@ -46,7 +46,7 @@
                             <h2 class="post-title"><a href="<?php $this->permalink(); ?>"><?php $this->title(); ?></a></h2>
                             <div class="post-excerpt"><?php $this->excerpt(140, '…'); ?></div>
                             <div class="post-card-foot">
-                                <span class="post-tags"><?php $this->tags(', ', true, 'none'); ?></span>
+                                <span class="post-tags"><?php $this->tags(', ', true, ''); ?></span>
                                 <a class="post-readmore" href="<?php $this->permalink(); ?>">
                                     <?php _e('阅读全文'); ?>
                                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m-6-6l6 6-6 6"/></svg>

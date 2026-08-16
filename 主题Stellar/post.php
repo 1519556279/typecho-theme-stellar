@@ -1,4 +1,4 @@
-<?php if (!defined('__TYPECHO_ROOT_DIR__')) exit; ?>
+﻿<?php if (!defined('__TYPECHO_ROOT_DIR__')) exit; ?>
 <?php $this->need('header.php'); ?>
 
 <article class="single-post reveal" itemscope itemtype="http://schema.org/Article">
@@ -16,7 +16,7 @@
         </div>
         <h1 class="single-title" itemprop="name"><?php $this->title(); ?></h1>
         <div class="single-tags">
-            <?php $this->tags(' ', true, 'none'); ?>
+            <?php $this->tags(' ', true, ''); ?>
         </div>
     </header>
 

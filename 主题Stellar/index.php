@@ -56,7 +56,7 @@
 
                             <div class="post-card-foot">
                                 <span class="post-tags">
-                                    <?php $this->tags(', ', true, 'none'); ?>
+                                    <?php $this->tags(', ', true, ''); ?>
                                 </span>
                                 <a class="post-readmore" href="<?php $this->permalink(); ?>">
                                     <?php _e('阅读全文'); ?>
