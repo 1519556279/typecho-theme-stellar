@@ -1,4 +1,4 @@
-/* ============================================================
+﻿/* ============================================================
    Stellar Admin · Typecho 后台美化（与前台 Stellar 主题同风格）
    毛玻璃 / 渐变星辰配色 / 暗色模式 / 前沿动效
    ============================================================ */
@@ -857,13 +857,6 @@ html[data-theme] .typecho-login { transition: background-color .3s ease, color .
 }
 .sa-nav > li > a:hover .sa-nav-icon { transform: scale(1.08); }
 .sa-nav > li > a .sa-nav-icon { transition: transform .18s var(--ease-spring); }
-.sa-nav > li.sa-current > a {
-    background: var(--accent-grad);
-    color: #fff;
-    font-weight: 600;
-    box-shadow: 0 4px 14px var(--accent-soft-2);
-}
-.sa-nav > li.sa-current > a:hover { color: #fff; }
 .sa-nav > li > a.sa-parent::after {
     content: "";
     margin-left: auto;
@@ -1524,9 +1517,6 @@ html[data-theme] .typecho-login { transition: background-color .3s ease, color .
 #sa-undo-btn:hover { background: var(--accent-grad); color: #fff; border-color: transparent; }
 
 /* ---------- 独立 AI 页面 ---------- */
-.sa-ai-entry > a { background: color-mix(in srgb, var(--accent) 8%, transparent); }
-.sa-ai-entry > a .sa-nav-icon { color: var(--accent); }
-.sa-ai-entry.sa-current > a { background: var(--accent-grad); color: #fff; }
 .sa-ai-meta { display: flex; align-items: center; gap: 10px; }
 .sa-ai-status { font-size: 12.5px; color: var(--text-3); }
 .sa-ai-grid {

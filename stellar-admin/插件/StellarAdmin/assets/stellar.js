@@ -162,7 +162,7 @@
             if (!a || !sub) return;
             a.classList.add('sa-parent');
             a.setAttribute('data-title', a.textContent.trim());
-            if (li.classList.contains('sa-current')) li.classList.add('sa-open');
+            if (li.querySelector('menu li.sa-current')) li.classList.add('sa-open');
             a.addEventListener('click', function (e) {
                 /* Typecho 默认行为：父级点击仅展开/收起子菜单，不跳转；子项点击才跳转 */
                 e.preventDefault();
@@ -192,7 +192,7 @@
             var m = (a.getAttribute('href') || '').match(/([a-z-]+)\.php/);
             a.insertBefore(makeIcon(m && NAV_ICONS[m[1]] ? NAV_ICONS[m[1]] : 'sparkle'), a.firstChild);
         });
-        if (!nav.querySelector('li.sa-current') && isDesktop()) {
+        if (!nav.querySelector('li.sa-current, li menu li.sa-current') && isDesktop()) {
             var first = nav.querySelector('li');
             if (first) first.classList.add('sa-open');
         }

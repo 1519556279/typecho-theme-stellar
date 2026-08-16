@@ -11,10 +11,7 @@
     </button>
 </div>
 <nav class="sa-nav">
-    <li class="sa-ai-entry"><a href="<?php $options->adminUrl('ai-console.php'); ?>">
-        <svg class="sa-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3Z"/></svg>
-        <span><?php _e('AI 助手'); ?></span></a></li>
-    <?php $menu->output('sa-current', 'sa-current'); ?>
+    <?php $menu->output('', 'sa-current'); ?>
 </nav>
 <div class="sa-sidebar-foot">
     <div class="sa-user" id="sa-sidebar-user">
