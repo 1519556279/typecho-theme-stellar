@@ -270,10 +270,11 @@ p { margin: 0 0 1em; }
     background: var(--card); border-left: 1px solid var(--line);
     padding: 20px; overflow-y: auto;
     transform: translateX(105%);
-    transition: transform .32s cubic-bezier(.22, .61, .36, 1);
+    visibility: hidden; /* iOS 隐藏态彻底不可见（防渲染残留/右侧突出） */
+    transition: transform .32s cubic-bezier(.22, .61, .36, 1), visibility .32s;
     box-shadow: var(--shadow-lg);
 }
-.drawer.open { transform: none; }
+.drawer.open { transform: none; visibility: visible; }
 .drawer-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
 .drawer-title { font-weight: 700; font-size: 17px; }
 .drawer-nav { display: flex; flex-direction: column; gap: 2px; margin-bottom: 22px; }
@@ -380,10 +381,10 @@ p { margin: 0 0 1em; }
 .post-meta a { color: var(--text-3); }
 .post-meta a:hover { color: var(--accent); }
 .post-edit { font-size: 13px; color: var(--accent) !important; }
-.post-title { font-size: 22px; font-weight: 700; margin: 0; letter-spacing: -.2px; }
+.post-title { font-size: 22px; font-weight: 700; margin: 0; letter-spacing: -.2px; overflow-wrap: break-word; word-break: break-word; }
 .post-title a { color: var(--text); }
 .post-title a:hover { color: var(--accent); }
-.post-excerpt { color: var(--text-2); font-size: 15px; margin: 0; }
+.post-excerpt { color: var(--text-2); font-size: 15px; margin: 0; overflow-wrap: break-word; word-break: break-word; }
 .post-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 2px; flex-wrap: wrap; }
 .post-tags { display: flex; gap: 6px; flex-wrap: wrap; }
 .post-tags a {
