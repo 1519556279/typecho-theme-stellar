@@ -954,3 +954,6 @@ p { margin: 0 0 1em; }
     .hero-stats { flex-wrap: wrap; }
     .post-card-foot { flex-direction: column; align-items: flex-start; }
 }
+
+/* 移动端防横向溢出（抽屉/绝对定位元素撑大页面） */
+html, body { overflow-x: hidden; }
