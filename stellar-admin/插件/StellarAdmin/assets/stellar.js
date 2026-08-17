@@ -845,7 +845,7 @@
         var content = doc.querySelector('.sa-content') || doc.querySelector('main.main');
         if (!content) { location.href = url; return; }
         var seq = ++pjaxSeq; /* 丢弃过期响应（快速前进/后退竞态） */
-        content.style.opacity = '.3';
+        if (isDesktop()) content.style.opacity = '.3'; /* 桌面端淡出过渡；手机端恢复 Typecho 默认（无动画） */
         /* 注意：不能带 X-Requested-With 头——Typecho 检测到会返回精简版 HTML（无完整结构） */
         fetch(url)
             .then(function (r) { return r.ok ? r.text() : Promise.reject(new Error('HTTP ' + r.status)); })
@@ -870,6 +870,8 @@
                 initPage();
                 content.style.opacity = '1';
                 window.scrollTo(0, 0);
+                var pjaxApp = doc.querySelector('.sa-app');
+                if (pjaxApp && !isDesktop()) pjaxApp.classList.remove('sa-nav-open'); /* 手机端跳转后自动收起抽屉，避免遮挡 */
                 window.__saPjaxCount = (window.__saPjaxCount || 0) + 1; /* 诊断标记 */
             })
             .catch(function () { location.href = url; });
