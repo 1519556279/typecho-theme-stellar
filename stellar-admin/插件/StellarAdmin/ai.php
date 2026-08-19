@@ -307,12 +307,146 @@ function cmd_find_meta(string $name, string $type): ?int
     ]));
 }
 
+/* ---------- 页面（独立页面）执行器 ---------- */
+function cmd_create_page(array $a)
+{
+    $db = \Typecho\Db::get();
+    $title = trim((string) ($a['title'] ?? ''));
+    $content = trim((string) ($a['content'] ?? ''));
+    if ($title === '' || $content === '') {
+        return ['action' => 'create_page', 'ok' => false, 'detail' => '标题和内容不能为空'];
+    }
+    $slug = trim((string) ($a['slug'] ?? ''));
+    if ($slug === '') {
+        $slug = 'page-' . time();
+    }
+    /* 确保 slug 唯一 */
+    $slugBase = $slug;
+    for ($i = 1; ; $i++) {
+        $exists = $db->fetchRow($db->select('cid')->from('table.contents')->where('slug = ?', $slug)->limit(1));
+        if (!$exists) {
+            break;
+        }
+        $slug = $slugBase . '-' . $i;
+    }
+    $status = in_array($a['status'] ?? '', ['publish', 'draft', 'hidden'], true) ? $a['status'] : 'publish';
+    $now = time();
+    $text = '<!--markdown-->' . $content;
+
+    $cid = (int) $db->query($db->insert('table.contents')->rows([
+        'title' => $title, 'slug' => $slug, 'created' => $now, 'modified' => $now,
+        'text' => $text, 'authorId' => \Typecho\Widget::widget('Widget_User')->uid,
+        'type' => 'page', 'status' => $status, 'commentsNum' => 0,
+        'allowComment' => 1, 'allowPing' => 1, 'allowFeed' => 1, 'parent' => 0,
+        'template' => '', 'order' => 0,
+    ]));
+    return ['action' => 'create_page', 'ok' => true, 'detail' => "已发布页面《{$title}》（cid={$cid}，状态：{$status}）"];
+}
+
+function cmd_update_page(array $a)
+{
+    $db = \Typecho\Db::get();
+    $cid = (int) ($a['cid'] ?? 0);
+    if ($cid <= 0) {
+        /* 未给 ID：按标题查找页面（find_title 优先；否则用 title 查找） */
+        $hasFind = !empty($a['find_title']);
+        $find = trim((string) ($a['find_title'] ?? ($a['title'] ?? '')));
+        if ($find !== '') {
+            $row = $db->fetchRow($db->select('cid')->from('table.contents')
+                ->where('type = ? AND title = ?', 'page', $find)->limit(1));
+            $cid = $row ? (int) $row['cid'] : 0;
+        }
+        if ($cid <= 0) {
+            return ['action' => 'update_page', 'ok' => false, 'detail' => '缺少 cid（且未找到该标题的页面）'];
+        }
+        if (!$hasFind) {
+            unset($a['title']); /* 只有用 title 做查找时才移除（find_title 存在时 title 是新标题） */
+        }
+    }
+    $rows = [];
+    if (!empty($a['title'])) {
+        $rows['title'] = trim($a['title']);
+    }
+    if (!empty($a['content'])) {
+        $rows['text'] = '<!--markdown-->' . trim($a['content']);
+    }
+    if (!empty($a['status']) && in_array($a['status'], ['publish', 'draft', 'hidden', 'private'], true)) {
+        $rows['status'] = $a['status'];
+    }
+    if (!empty($a['slug'])) {
+        $rows['slug'] = trim($a['slug']);
+    }
+    if (array_key_exists('template', $a)) {
+        $rows['template'] = (string) $a['template'];
+    }
+    if (array_key_exists('order', $a)) {
+        $rows['order'] = (int) $a['order'];
+    }
+    if (!$rows) {
+        return ['action' => 'update_page', 'ok' => false, 'detail' => '没有要修改的内容'];
+    }
+    $rows['modified'] = time();
+    $aff = $db->query($db->update('table.contents')->rows($rows)->where('cid = ? AND type = ?', $cid, 'page'));
+    if (!$aff) {
+        return ['action' => 'update_page', 'ok' => false, 'detail' => "未找到页面 {$cid}（或内容无变化）"];
+    }
+    return ['action' => 'update_page', 'ok' => true, 'detail' => "页面 {$cid} 已更新"];
+}
+
+function cmd_delete_page(array $a)
+{
+    $db = \Typecho\Db::get();
+    $cid = (int) ($a['cid'] ?? 0);
+    if ($cid <= 0) {
+        /* 未给 ID：按标题查找页面 */
+        $find = trim((string) ($a['find_title'] ?? ($a['title'] ?? '')));
+        if ($find !== '') {
+            $row = $db->fetchRow($db->select('cid')->from('table.contents')
+                ->where('type = ? AND title = ?', 'page', $find)->limit(1));
+            $cid = $row ? (int) $row['cid'] : 0;
+        }
+        if ($cid <= 0) {
+            return ['action' => 'delete_page', 'ok' => false, 'detail' => '缺少 cid（且未找到该标题的页面）'];
+        }
+    }
+    $db->query($db->delete('table.relationships')->where('cid = ?', $cid));
+    $db->query($db->delete('table.contents')->where('cid = ? AND type = ?', $cid, 'page'));
+    return ['action' => 'delete_page', 'ok' => true, 'detail' => "页面 {$cid} 已删除"];
+}
+
+function cmd_list_pages(array $a)
+{
+    $db = \Typecho\Db::get();
+    $limit = min(20, max(1, (int) ($a['limit'] ?? 10)));
+    $rows = $db->fetchAll($db->select('cid', 'title', 'status', 'created')
+        ->from('table.contents')->where('type = ?', 'page')
+        ->order('created', \Typecho\Db::SORT_DESC)->limit($limit));
+    $list = array_map(function ($r) {
+        return ['cid' => (int) $r['cid'], 'title' => $r['title'], 'status' => $r['status'],
+                'created' => date('Y-m-d H:i', (int) $r['created'])];
+    }, $rows);
+    return ['action' => 'list_pages', 'ok' => true, 'detail' => "最近 {$limit} 个页面", 'list' => $list];
+}
+
 function cmd_update_post(array $a)
 {
     $db = \Typecho\Db::get();
     $cid = (int) ($a['cid'] ?? 0);
     if ($cid <= 0) {
-        return ['action' => 'update_post', 'ok' => false, 'detail' => '缺少 cid'];
+        /* 未给 ID：按标题查找文章（find_title 优先；否则用 title 查找） */
+        $hasFind = !empty($a['find_title']);
+        $find = trim((string) ($a['find_title'] ?? ($a['title'] ?? '')));
+        if ($find !== '') {
+            $row = $db->fetchRow($db->select('cid')->from('table.contents')
+                ->where('type = ? AND title = ?', 'post', $find)->limit(1));
+            $cid = $row ? (int) $row['cid'] : 0;
+        }
+        if ($cid <= 0) {
+            return ['action' => 'update_post', 'ok' => false, 'detail' => '缺少 cid（且未找到该标题的文章）'];
+        }
+        if (!$hasFind) {
+            unset($a['title']); /* 只有用 title 做查找时才移除（find_title 存在时 title 是新标题） */
+        }
     }
     $rows = [];
     if (!empty($a['title'])) {
@@ -340,7 +474,16 @@ function cmd_delete_post(array $a)
     $db = \Typecho\Db::get();
     $cid = (int) ($a['cid'] ?? 0);
     if ($cid <= 0) {
-        return ['action' => 'delete_post', 'ok' => false, 'detail' => '缺少 cid'];
+        /* 未给 ID：按标题查找文章 */
+        $find = trim((string) ($a['find_title'] ?? ($a['title'] ?? '')));
+        if ($find !== '') {
+            $row = $db->fetchRow($db->select('cid')->from('table.contents')
+                ->where('type = ? AND title = ?', 'post', $find)->limit(1));
+            $cid = $row ? (int) $row['cid'] : 0;
+        }
+        if ($cid <= 0) {
+            return ['action' => 'delete_post', 'ok' => false, 'detail' => '缺少 cid（且未找到该标题的文章）'];
+        }
     }
     $db->query($db->delete('table.relationships')->where('cid = ?', $cid));
     $db->query($db->delete('table.contents')->where('cid = ? AND type = ?', $cid, 'post'));
@@ -402,6 +545,12 @@ function action_command()
         . '4.{"action":"list_posts","limit":数字} '
         . '5.{"action":"get_stats"} '
         . '6.{"action":"update_option","key":"title或description或keywords","value":"新值"} '
+        . '7.{"action":"create_page","title":"标题","content":"Markdown正文","slug":"英文短名或空","status":"publish或draft或hidden或空"}（创建独立页面） '
+        . '8.{"action":"update_page","cid":页面ID,"title":"新标题或空","content":"新正文或空","status":"publish或draft或hidden或private或空","slug":"新短名或空","template":"页面模板名或空","order":排序数字或空} '
+        . '9.{"action":"delete_page","cid":页面ID} '
+        . '10.{"action":"list_pages","limit":数字} '
+        . '按标题查找：update/delete 动作如果用户只说了标题没有 ID，用 "find_title":"现有标题" 字段指定对象（此时 title 字段是修改后的新标题，可为空表示不改标题）。'
+        . '正文直传：如果用户提供了大段正文（指令后直接粘贴的内容），create_post/create_page 的 content 字段请填字符串 __RAW__，程序会自动取用户消息中指令之后的部分作为正文，不要复制长文本。'
         . '如果指令无法对应任何动作，输出 []。';
 
     $raw = ai_chat([
@@ -423,19 +572,47 @@ function action_command()
         ai_fail('AI 返回无法解析：' . mb_substr($raw, 0, 200), 502);
     }
 
+    /* __RAW__ 直传：取用户消息中指令行之后的部分作为正文（不经过 LLM 复制，防截断） */
+    $userRaw = (string) ($input['raw'] ?? '');
+    if ($userRaw !== '') {
+        $lines = preg_split('/\r?\n/', $userRaw, 2);
+        $body = trim($lines[1] ?? '');
+        if ($body === '') {
+            $body = trim($userRaw);
+        }
+        if ($body !== '') {
+            foreach ($actions as &$a) {
+                if (is_array($a) && ($a['content'] ?? '') === '__RAW__') {
+                    $a['content'] = $body;
+                }
+            }
+            unset($a);
+        }
+    }
+
     $results = [];
+    $hasAction = false;
     foreach ($actions as $a) {
+        $name = (string) ($a['action'] ?? '');
+        if ($name === '') {
+            continue; /* 过滤 LLM 解析出的空动作 */
+        }
+        $hasAction = true;
         $fn = [
             'create_post' => 'cmd_create_post', 'update_post' => 'cmd_update_post',
             'delete_post' => 'cmd_delete_post', 'list_posts' => 'cmd_list_posts',
             'get_stats' => 'cmd_get_stats', 'update_option' => 'cmd_update_option',
+            'create_page' => 'cmd_create_page', 'update_page' => 'cmd_update_page',
+            'delete_page' => 'cmd_delete_page', 'list_pages' => 'cmd_list_pages',
         ];
-        $name = (string) ($a['action'] ?? '');
         if (isset($fn[$name]) && is_array($a)) {
             $results[] = $fn[$name]($a);
         } else {
             $results[] = ['action' => $name, 'ok' => false, 'detail' => '未知动作'];
         }
+    }
+    if (!$hasAction) {
+        ai_json(['ok' => true, 'results' => [], 'note' => '没有识别出可执行的操作，请换个说法试试，例如：发布一个页面《关于我》']);
     }
     ai_json(['ok' => true, 'results' => $results]);
 }
