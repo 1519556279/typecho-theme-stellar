@@ -839,8 +839,8 @@ html[data-theme] .typecho-login { transition: background-color .3s ease, color .
 .sa-sidebar-toggle svg, .sa-topbar-toggle svg { width: 17px; height: 17px; }
 
 .sa-nav { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 2px 10px 12px; }
-/* AI 大屏入口：默认隐藏（桌面端），仅手机端显示 */
-.sa-ai-entry { display: none; }
+/* AI 大屏入口：桌面端与手机端均显示 */
+.sa-ai-entry { display: block; }
 .sa-ai-entry > a {
     display: flex; align-items: center; gap: 10px;
     padding: 10px 12px; margin-bottom: 6px;
@@ -1293,8 +1293,6 @@ html[data-theme] .typecho-login { transition: background-color .3s ease, color .
     .sa-topbar { padding: 0 14px; }
     .sa-user-name { display: none; }
     .sa-content, .body.container { padding: 2px 16px 36px; }
-    /* 手机端：AI 大屏入口（桌面端隐藏） */
-    .sa-ai-entry { display: block; }
     /* 手机端：恢复 Typecho 默认朴素动画（无过渡/无弹出动画） */
     .sa-sidebar, .sa-shell, .sa-topbar, .sa-nav a, .sa-nav-icon, .sa-parent::after,
     .sa-btn, .btn, .sa-post, .sa-batch-op, .sa-pager a, .sa-chat-msg, .sa-cmd-chip,
