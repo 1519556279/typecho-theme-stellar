@@ -73,7 +73,7 @@ function ai_chat(array $messages, int $maxTokens = 3000): string
     }
     $key = trim((string) ($aiConfig->ai_key ?? ''));
     if (empty($base) || empty($model) || empty($key)) {
-        ai_fail('AI 服务未配置完整：请在插件设置中填写 API Key / Base URL / 模型', 400);
+        ai_fail('AI 服务未配置完整：请在插件设置中填写 API Key / Base URL  模型', 400);
     }
 
     $ch = curl_init(rtrim($base, '/') . '/chat/completions');
@@ -367,8 +367,9 @@ function cmd_update_page(array $a)
     if (!empty($a['title'])) {
         $rows['title'] = trim($a['title']);
     }
-    if (!empty($a['content'])) {
-        $rows['text'] = '<!--markdown-->' . trim($a['content']);
+    $newContent = trim((string) ($a['content'] ?? ''));
+    if ($newContent !== '') {
+        $rows['text'] = '<!--markdown-->' . $newContent;
     }
     if (!empty($a['status']) && in_array($a['status'], ['publish', 'draft', 'hidden', 'private'], true)) {
         $rows['status'] = $a['status'];
@@ -452,8 +453,9 @@ function cmd_update_post(array $a)
     if (!empty($a['title'])) {
         $rows['title'] = trim($a['title']);
     }
-    if (!empty($a['content'])) {
-        $rows['text'] = '<!--markdown-->' . trim($a['content']);
+    $newContent = trim((string) ($a['content'] ?? ''));
+    if ($newContent !== '') {
+        $rows['text'] = '<!--markdown-->' . $newContent;
     }
     if (!empty($a['status']) && in_array($a['status'], ['publish', 'draft', 'waiting', 'hidden', 'private'], true)) {
         $rows['status'] = $a['status'];
@@ -537,6 +539,15 @@ function action_command()
         ai_fail('请输入指令');
     }
 
+    /* 规则快速通道：常见指令不经过 LLM，秒级执行（命中即返回） */
+    $quick = action_rule_quick($command, $input);
+    if ($quick !== null) {
+        if (isset($quick['actions'])) {
+            action_run_actions($quick['actions'], $input);
+            return;
+        }
+    }
+
     $sys = '你是 Typecho 博客后台操作代理。把用户的中文指令解析为 JSON 动作数组（只输出 JSON 数组本身，不要代码块、不要解释）。'
         . '可用动作：'
         . '1.{"action":"create_post","title":"标题","content":"Markdown正文","category":"分类名或空","tags":"标签,逗号分隔","status":"publish或draft或waiting","slug":"英文短名或空"} '
@@ -549,33 +560,156 @@ function action_command()
         . '8.{"action":"update_page","cid":页面ID,"title":"新标题或空","content":"新正文或空","status":"publish或draft或hidden或private或空","slug":"新短名或空","template":"页面模板名或空","order":排序数字或空} '
         . '9.{"action":"delete_page","cid":页面ID} '
         . '10.{"action":"list_pages","limit":数字} '
+        . '重要区分：用户说"页面/独立页面"（如"发布一个关于我页面"）时用 create_page；说"文章/帖子"时用 create_post。不要混淆。'
         . '按标题查找：update/delete 动作如果用户只说了标题没有 ID，用 "find_title":"现有标题" 字段指定对象（此时 title 字段是修改后的新标题，可为空表示不改标题）。'
         . '正文直传：如果用户提供了大段正文（指令后直接粘贴的内容），create_post/create_page 的 content 字段请填字符串 __RAW__，程序会自动取用户消息中指令之后的部分作为正文，不要复制长文本。'
+        . '多轮上下文：用户可能分多轮提供信息（先说要做什么，再补充标题/内容）。请结合对话历史中用户之前提供的信息补全参数；信息不足时输出 []。'
         . '如果指令无法对应任何动作，输出 []。';
 
-    $raw = ai_chat([
-        ['role' => 'system', 'content' => $sys],
-        ['role' => 'user', 'content' => $command],
-    ], 3000);
+    /* 组装对话上下文：历史 + 当前指令 */
+    $msgs = $input['messages'] ?? [];
+    $chatMsgs = [];
+    if (is_array($msgs) && $msgs) {
+        $chatMsgs = array_slice($msgs, -10);
+        /* 最后一条通常是当前指令（与 command 相同），避免重复 */
+        $last = end($chatMsgs);
+        if (is_array($last) && trim((string) ($last['content'] ?? '')) === $command) {
+            array_pop($chatMsgs);
+        }
+    }
+    $chatMsgs[] = ['role' => 'user', 'content' => $command];
+
+    $raw = ai_chat(array_merge([['role' => 'system', 'content' => $sys]], $chatMsgs), 3000);
 
     /* 解析 JSON（容忍 ```json 包裹） */
     $raw = trim($raw);
-    if (preg_match('/```(?:json)?\s*([\s\S]*?)```/', $raw, $m)) {
+    if (preg_match('/```(?:json)?\s*([\s\S]*?)```/u', $raw, $m)) {
         $raw = trim($m[1]);
     }
     $raw = trim($raw, " \t\n\r\0\x0B,");
-    if ($raw === '[]' || $raw === '') {
-        ai_json(['ok' => true, 'results' => [], 'note' => '没有识别出可执行的操作，请换个说法试试，例如：发布一篇标题为「你好世界」的文章']);
-    }
     $actions = json_decode($raw, true);
     if (!is_array($actions)) {
         ai_fail('AI 返回无法解析：' . mb_substr($raw, 0, 200), 502);
     }
+    /* 过滤空动作（LLM 偶发输出 [{}] 或 [{"action":""}]） */
+    $filtered = [];
+    foreach ($actions as $a) {
+        if (is_array($a) && (string) ($a['action'] ?? '') !== '') {
+            $filtered[] = $a;
+        }
+    }
+    if (!$filtered) {
+        ai_json(['ok' => true, 'results' => [], 'note' => '没有识别出可执行的操作，请换个说法试试，例如：发布一篇标题为「你好世界」的文章']);
+    }
+    action_run_actions($filtered, $input);
+}
 
+/* ---------- 规则快速通道（不经过 LLM，秒级响应常见指令） ---------- */
+function action_rule_quick(string $command, array $input): ?array
+{
+    /* 提取标题（《X》/「X」/"X"）与正文（指令行之后的部分） */
+    $title = '';
+    if (preg_match('/[《「"]([^》」"]+)[》」"]/u', $command, $t)) {
+        $title = trim($t[1]);
+    }
+    $raw = (string) ($input['raw'] ?? '');
+    $lines = preg_split('/\r?\n/u', $raw, 2);
+    $body = trim($lines[1] ?? '');
+    if ($body === '') {
+        $body = trim($raw);
+    }
+
+    $type = null;
+    if (preg_match('/(页面|独立页面)/u', $command)) {
+        $type = 'page';
+    } elseif (preg_match('/(文章|帖子)/u', $command)) {
+        $type = 'post';
+    }
+
+    /* 1. 发布/创建页面或文章（缺标题时交给执行器正常报错） */
+    if ($type !== null && preg_match('/(发布|创建|新建|发表|写一(篇|个))/u', $command)) {
+        return ['actions' => [[
+            'action' => $type === 'page' ? 'create_page' : 'create_post',
+            'title' => $title,
+            'content' => $body !== '' ? '__RAW__' : '',
+            'status' => 'publish',
+        ]]];
+    }
+
+    /* 2. 删除页面/文章 */
+    if ($type !== null && preg_match('/(删除|移除|删掉|去掉)/u', $command) && $title !== '') {
+        return ['actions' => [[
+            'action' => $type === 'page' ? 'delete_page' : 'delete_post',
+            'find_title' => $title,
+        ]]];
+    }
+
+    /* 3. 列出/统计 */
+    if (preg_match('/(列出|查看|看看|显示).*(页面)/u', $command)) {
+        return ['actions' => [['action' => 'list_pages', 'limit' => 10]]];
+    }
+    if (preg_match('/(列出|查看|看看|显示).*(文章)/u', $command)) {
+        return ['actions' => [['action' => 'list_posts', 'limit' => 10]]];
+    }
+    if (preg_match('/(统计|概况|数据)/u', $command)) {
+        return ['actions' => [['action' => 'get_stats']]];
+    }
+
+    /* 4. 修改网站信息（标题/描述/关键词） */
+    if (preg_match('/(网站|博客|站点).*(标题|名称)/u', $command) && preg_match('/改成|改为|设置为|设为|更新为|变成/u', $command)) {
+        $v = action_rule_extract_value($command);
+        if ($v !== '') {
+            return ['actions' => [['action' => 'update_option', 'key' => 'title', 'value' => $v]]];
+        }
+    }
+    if (preg_match('/(网站|博客|站点).*(描述|简介)/u', $command) && preg_match('/改成|改为|设置为|设为|更新为|变成/u', $command)) {
+        $v = action_rule_extract_value($command);
+        if ($v !== '') {
+            return ['actions' => [['action' => 'update_option', 'key' => 'description', 'value' => $v]]];
+        }
+    }
+
+    /* 5. 修改页面/文章标题或内容（把《X》的标题改成Y / 更新《X》内容） */
+    if ($type !== null && preg_match('/(修改|更新|改|替换)/u', $command) && $title !== '') {
+        $action = [];
+        if (preg_match('/(标题|名字|名称).*(改成|改为|改成|更新为|变成)/u', $command)) {
+            $nv = action_rule_extract_value($command);
+            if ($nv !== '') {
+                $action['title'] = $nv;
+            }
+        }
+        if (preg_match('/(内容|正文)/u', $command) && $body !== '') {
+            $action['content'] = '__RAW__';
+        }
+        if ($action) {
+            return ['actions' => [[
+                'action' => $type === 'page' ? 'update_page' : 'update_post',
+                'find_title' => $title,
+            ] + $action]];
+        }
+    }
+
+    return null; /* 未命中 → 交给 LLM */
+}
+
+function action_rule_extract_value(string $command): string
+{
+    /* 取"改成/改为/设置为/变成"之后的内容 */
+    if (preg_match('/(?:改成|改为|设置为|设为|更新为|变成)[:：]?\s*(.+)$/u', $command, $m)) {
+        $v = trim($m[1]);
+        /* 去掉尾部标点与多余文字 */
+        $v = trim($v, "。；;，,！!？? \t\n\r");
+        return $v;
+    }
+    return '';
+}
+
+function action_run_actions(array $actions, array $input)
+{
     /* __RAW__ 直传：取用户消息中指令行之后的部分作为正文（不经过 LLM 复制，防截断） */
     $userRaw = (string) ($input['raw'] ?? '');
     if ($userRaw !== '') {
-        $lines = preg_split('/\r?\n/', $userRaw, 2);
+        $lines = preg_split('/\r?\n/u', $userRaw, 2);
         $body = trim($lines[1] ?? '');
         if ($body === '') {
             $body = trim($userRaw);
@@ -628,7 +762,7 @@ function sa_check_url(string $url): string
     if (!in_array($scheme, ['http', 'https'], true) || $host === '') {
         ai_fail('仅支持 http/https 链接');
     }
-    if ($host === 'localhost' || preg_match('/(^|\.)(local|internal)$/', $host)) {
+    if ($host === 'localhost' || preg_match('/(^|\.)(local|internal)$/u', $host)) {
         ai_fail('不允许访问该地址');
     }
     if (filter_var($host, FILTER_VALIDATE_IP)) {
@@ -715,10 +849,10 @@ function fetch_page(string $url): array
             if (strpos($redirectTo, '//') === 0) {
                 $b = parse_url($realUrl);
                 $current = $b['scheme'] . ':' . $redirectTo;
-            } elseif (strpos($redirectTo, '://') === false) {
+            } elseif (strpos($redirectTo, ':/') === false) {
                 $b = parse_url($realUrl);
                 $path = $redirectTo[0] === '/' ? $redirectTo
-                    : rtrim(dirname($b['path'] ?? '/'), '/') . '/' . $redirectTo;
+                    : rtrim(dirname($b['path'] ?? ''), '/') . '/' . $redirectTo;
                 $current = $b['scheme'] . '://' . $b['host']
                     . (isset($b['port']) ? ':' . $b['port'] : '') . $path;
             } else {
@@ -745,8 +879,8 @@ function fetch_page(string $url): array
     $text = preg_replace('/<\/(p|div|h[1-6]|li|tr|blockquote|pre)>/i', "\n", $text);
     $text = strip_tags($text);
     $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-    $text = preg_replace('/[ \t]+/', ' ', $text);
-    $text = preg_replace('/\n\s*\n+/', "\n", $text);
+    $text = preg_replace('/[ \t]+/u', ' ', $text);
+    $text = preg_replace('/\n\s*\n+/u', "\n", $text);
     $text = trim($text);
     if ($text === '') {
         ai_fail('该链接没有可读取的文本内容');

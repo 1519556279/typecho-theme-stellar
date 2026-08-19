@@ -654,7 +654,30 @@
         var chat = doc.getElementById('sa-chat');
         var chatText = doc.getElementById('sa-chat-text');
         var chatSend = doc.getElementById('sa-chat-send');
-        var messages = [];
+        /* 对话历史：localStorage 持久化，超上限自动删最旧 */
+        var HISTORY_KEY = 'sa-ai-history';
+        var HISTORY_MAX = 40;
+        function loadHistory() {
+            try {
+                var h = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+                return Array.isArray(h) ? h : [];
+            } catch (e) { return []; }
+        }
+        function saveHistory() {
+            try {
+                localStorage.setItem(HISTORY_KEY, JSON.stringify(messages.slice(-HISTORY_MAX)));
+            } catch (e) {}
+        }
+        var messages = loadHistory();
+        /* 渲染历史对话 */
+        messages.forEach(function (m) {
+            if (m && m.role === 'user') {
+                addMsg('user', String(m.content));
+            } else if (m && m.role === 'assistant') {
+                addMsg('bot', String(m.content));
+            }
+        });
+        if (chat) chat.scrollTop = chat.scrollHeight;
         function addMsg(role, text) {
             var div = doc.createElement('div');
             div.className = 'sa-chat-msg ' + (role === 'user' ? 'me' : 'bot');
@@ -670,6 +693,7 @@
             if (!text) return;
             addMsg('user', text);
             messages.push({ role: 'user', content: text });
+            saveHistory();
             chatText.value = '';
             doChat(messages[messages.length - 1].content, null);
         }
@@ -677,7 +701,15 @@
             if (retryWait) retryWait.remove();
             var wait = addMsg('bot', '思考中…');
             /* 先尝试命令解析：能执行的操作直接执行（发布页面/文章等），无指令再走聊天 */
-            aiFetch({ action: 'command', command: userText, raw: userText }).then(function (d) {
+            aiFetch({ action: 'command', command: userText, raw: userText, messages: messages }).then(function (d) {
+                /* 反问澄清：指令缺参数时 AI 提问，用户补充后继续 */
+                if (d && d.clarify && d.clarify.length) {
+                    var qHtml = d.clarify.map(function (x, i) { return (i + 1) + '. ' + escapeHtml(x); }).join('<br>');
+                    wait.querySelector('.sa-chat-bubble').innerHTML = '👉 我需要确认一下：<br>' + qHtml;
+                    messages.push({ role: 'assistant', content: '需要确认：' + d.clarify.join('；') });
+                    saveHistory();
+                    return;
+                }
                 var results = d && d.results;
                 if (results && results.length) {
                     var html = results.map(function (r) {
@@ -689,6 +721,17 @@
                     }).join('');
                     wait.querySelector('.sa-chat-bubble').innerHTML = html;
                     messages.push({ role: 'assistant', content: results.map(function (r) { return r.detail || ''; }).join('\n') });
+                    saveHistory();
+                    /* 成功/失败提示 */
+                    var okCount = results.filter(function (r) { return r.ok; }).length;
+                    var failCount = results.length - okCount;
+                    if (failCount === 0) {
+                        toast('✅ 已完成：' + (results[0] && results[0].detail || '操作成功'), 'success');
+                    } else if (okCount > 0) {
+                        toast('✅ ' + okCount + ' 项成功，⚠️ ' + failCount + ' 项失败', 'error');
+                    } else {
+                        toast('⚠️ 操作失败：' + (results[0] && results[0].detail || '未知原因'), 'error');
+                    }
                     return;
                 }
                 /* 无指令 → 正常聊天 */
@@ -704,6 +747,7 @@
                     }
                     wait.querySelector('.sa-chat-bubble').innerHTML = replyHtml + escapeHtml(d2.reply).replace(/\n/g, '<br>');
                     messages.push({ role: 'assistant', content: d2.reply });
+                    saveHistory();
                     /* 生成文章时提供复制按钮 */
                     if (/^# /.test(d2.reply.trim())) {
                         var copyBtn = doc.createElement('button');
@@ -739,6 +783,7 @@
                     }
                     wait.querySelector('.sa-chat-bubble').innerHTML = escapeHtml(d2.reply).replace(/\n/g, '<br>');
                     messages.push({ role: 'assistant', content: d2.reply });
+                    saveHistory();
                 }).catch(function (e2) {
                     wait.querySelector('.sa-chat-bubble').innerHTML = '⚠️ ' + escapeHtml(e2 && e2.message ? e2.message : '网络请求失败');
                     addRetry(wait, userText);
