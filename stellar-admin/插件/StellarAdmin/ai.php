@@ -811,6 +811,21 @@ function action_run_actions(array $actions, array $input)
             continue; /* 过滤 LLM 解析出的空动作 */
         }
         $hasAction = true;
+        /* 内容自动生成兜底：create 动作缺内容时，AI 根据标题/用户输入生成完整文章（不再报"标题和内容不能为空"） */
+        if (($name === 'create_post' || $name === 'create_page') && trim((string) ($a['content'] ?? '')) === '') {
+            $title4gen = trim((string) ($a['title'] ?? ''));
+            $userRaw4gen = (string) ($input['raw'] ?? '');
+            if ($title4gen !== '') {
+                $sys4gen = '你是中文博客写作助手。用户要发布一篇题为「' . $title4gen . '」的'
+                    . ($name === 'create_page' ? '独立页面' : '文章') . '，但没有提供正文。'
+                    . '请根据标题写一篇完整、结构清晰的中文 Markdown 文章（含标题层级、段落、必要的细节与示例），直接输出 Markdown 正文，不要解释。'
+                    . ($userRaw4gen !== '' ? "\n用户补充的信息（可能包含内容要点）：\n" . mb_substr($userRaw4gen, 0, 500) : '');
+                $a['content'] = ai_chat([
+                    ['role' => 'system', 'content' => $sys4gen],
+                    ['role' => 'user', 'content' => '请为《' . $title4gen . '》生成正文'],
+                ], 4000);
+            }
+        }
         $fn = [
             'create_post' => 'cmd_create_post', 'update_post' => 'cmd_update_post',
             'delete_post' => 'cmd_delete_post', 'list_posts' => 'cmd_list_posts',
@@ -1010,6 +1025,7 @@ function action_chat()
         . '- 用户说"页面/独立页面"用 create_page；说"文章/帖子"用 create_post。'
         . '- 用户提供正文（指令后粘贴的大段内容）时，create_post/create_page 的 content 填字符串 __RAW__，程序自动取用户消息中指令之后的部分。'
         . '- 用户提供的内容很短很笼统时（如"内容：明天吃西红柿鸡蛋面"），不要原样发布——把内容扩展成完整的中文 Markdown 文章写入 content。'
+        . '- 用户只说发布没说内容时（如"发布关于我页面"），根据标题和对话上下文自动生成完整文章写入 content，不要留空。'
         . '- 结合对话历史：用户分多轮提供信息时（先给材料再让发布），从历史中提取标题/内容补全参数。'
         . '- 只有用户明确表达执行意图（如"发布/创建/删除/修改/列出/统计/改成"）才输出动作；仅提供内容、询问、分析时，用自然语言回复你的理解与分析（如"我理解：标题是《明天要吃什么》，内容是《明天吃西红柿鸡蛋面》。需要我帮你发布吗？"），不要输出 [] 或任何 JSON。';
 
