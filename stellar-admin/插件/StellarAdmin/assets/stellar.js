@@ -699,17 +699,15 @@
         }
         function doChat(userText, retryWait) {
             if (retryWait) retryWait.remove();
-            var wait = addMsg('bot', '思考中…');
-            /* 先尝试命令解析：能执行的操作直接执行（发布页面/文章等），无指令再走聊天 */
-            aiFetch({ action: 'command', command: userText, raw: userText, messages: messages }).then(function (d) {
-                /* 反问澄清：指令缺参数时 AI 提问，用户补充后继续 */
-                if (d && d.clarify && d.clarify.length) {
-                    var qHtml = d.clarify.map(function (x, i) { return (i + 1) + '. ' + escapeHtml(x); }).join('<br>');
-                    wait.querySelector('.sa-chat-bubble').innerHTML = '👉 我需要确认一下：<br>' + qHtml;
-                    messages.push({ role: 'assistant', content: '需要确认：' + d.clarify.join('；') });
-                    saveHistory();
+            var wait = addMsg('bot', '🤔 正在思考…');
+            /* 统一走 chat：AI 自主判断——分析回复或执行操作（结果同样在此展示） */
+            aiFetch({ action: 'chat', messages: messages }).then(function (d) {
+                if (!d.ok) {
+                    wait.querySelector('.sa-chat-bubble').innerHTML = '⚠️ ' + escapeHtml(d.error || '出错了');
+                    addRetry(wait, userText);
                     return;
                 }
+                /* 执行操作结果（后端执行后返回 results） */
                 var results = d && d.results;
                 if (results && results.length) {
                     var html = results.map(function (r) {
@@ -717,12 +715,14 @@
                         var extra = r.list ? '<ul class="sa-cmd-list">' + r.list.map(function (p) {
                             return '<li><b>#' + escapeHtml(p.cid) + '</b> ' + escapeHtml(p.title) + ' <span class="sa-cmd-st">' + escapeHtml(p.status) + '</span></li>';
                         }).join('') + '</ul>' : '';
+                        if (r.content) {
+                            extra += '<div class="sa-cmd-content">' + escapeHtml(String(r.content).slice(0, 300)) + '</div>';
+                        }
                         return '<div class="sa-cmd-item">' + icon + ' ' + escapeHtml(r.action || '') + '：' + escapeHtml(r.detail || '') + '</div>' + extra;
                     }).join('');
                     wait.querySelector('.sa-chat-bubble').innerHTML = html;
                     messages.push({ role: 'assistant', content: results.map(function (r) { return r.detail || ''; }).join('\n') });
                     saveHistory();
-                    /* 成功/失败提示 */
                     var okCount = results.filter(function (r) { return r.ok; }).length;
                     var failCount = results.length - okCount;
                     if (failCount === 0) {
@@ -734,60 +734,38 @@
                     }
                     return;
                 }
-                /* 无指令 → 正常聊天 */
-                aiFetch({ action: 'chat', messages: messages }).then(function (d2) {
-                    if (!d2.ok) {
-                        wait.querySelector('.sa-chat-bubble').innerHTML = '⚠️ ' + escapeHtml(d2.error || '出错了');
-                        addRetry(wait, userText);
-                        return;
-                    }
-                    var replyHtml = '';
-                    if (d2.web) {
-                        replyHtml = '🔗 已联网查看：<a href="' + escapeHtml(d2.web.url) + '" target="_blank" rel="noopener">' + escapeHtml(d2.web.title) + '</a><br>';
-                    }
-                    wait.querySelector('.sa-chat-bubble').innerHTML = replyHtml + escapeHtml(d2.reply).replace(/\n/g, '<br>');
-                    messages.push({ role: 'assistant', content: d2.reply });
-                    saveHistory();
-                    /* 生成文章时提供复制按钮 */
-                    if (/^# /.test(d2.reply.trim())) {
-                        var copyBtn = doc.createElement('button');
-                        copyBtn.type = 'button';
-                        copyBtn.className = 'btn btn-s sa-copy-btn';
-                        copyBtn.textContent = '复制全文';
-                        copyBtn.addEventListener('click', function () {
-                            if (navigator.clipboard) {
-                                navigator.clipboard.writeText(d2.reply).then(function () { toast('已复制 ✓', 'success'); });
-                            } else {
-                                var ta = doc.createElement('textarea');
-                                ta.value = d2.reply;
-                                doc.body.appendChild(ta);
-                                ta.select();
-                                doc.execCommand('copy');
-                                ta.remove();
-                                toast('已复制 ✓', 'success');
-                            }
-                        });
-                        wait.querySelector('.sa-chat-bubble').appendChild(copyBtn);
-                    }
-                }).catch(function (e2) {
-                    wait.querySelector('.sa-chat-bubble').innerHTML = '⚠️ ' + escapeHtml(e2 && e2.message ? e2.message : '网络请求失败');
-                    addRetry(wait, userText);
-                });
+                /* 正常分析/聊天回复 */
+                var replyHtml = '';
+                if (d.web) {
+                    replyHtml = '🔗 已联网查看：<a href="' + escapeHtml(d.web.url) + '" target="_blank" rel="noopener">' + escapeHtml(d.web.title) + '</a><br>';
+                }
+                wait.querySelector('.sa-chat-bubble').innerHTML = replyHtml + escapeHtml(d.reply || '').replace(/\n/g, '<br>');
+                messages.push({ role: 'assistant', content: d.reply || '' });
+                saveHistory();
+                /* 生成文章时提供复制按钮 */
+                if (d.reply && /^# /.test(d.reply.trim())) {
+                    var copyBtn = doc.createElement('button');
+                    copyBtn.type = 'button';
+                    copyBtn.className = 'btn btn-s sa-copy-btn';
+                    copyBtn.textContent = '复制全文';
+                    copyBtn.addEventListener('click', function () {
+                        if (navigator.clipboard) {
+                            navigator.clipboard.writeText(d.reply).then(function () { toast('已复制 ✓', 'success'); });
+                        } else {
+                            var ta = doc.createElement('textarea');
+                            ta.value = d.reply;
+                            doc.body.appendChild(ta);
+                            ta.select();
+                            doc.execCommand('copy');
+                            ta.remove();
+                            toast('已复制 ✓', 'success');
+                        }
+                    });
+                    wait.querySelector('.sa-chat-bubble').appendChild(copyBtn);
+                }
             }).catch(function (e) {
-                /* 命令解析失败（网络等）也回退聊天 */
-                aiFetch({ action: 'chat', messages: messages }).then(function (d2) {
-                    if (!d2.ok) {
-                        wait.querySelector('.sa-chat-bubble').innerHTML = '⚠️ ' + escapeHtml(d2.error || '出错了');
-                        addRetry(wait, userText);
-                        return;
-                    }
-                    wait.querySelector('.sa-chat-bubble').innerHTML = escapeHtml(d2.reply).replace(/\n/g, '<br>');
-                    messages.push({ role: 'assistant', content: d2.reply });
-                    saveHistory();
-                }).catch(function (e2) {
-                    wait.querySelector('.sa-chat-bubble').innerHTML = '⚠️ ' + escapeHtml(e2 && e2.message ? e2.message : '网络请求失败');
-                    addRetry(wait, userText);
-                });
+                wait.querySelector('.sa-chat-bubble').innerHTML = '⚠️ ' + escapeHtml(e && e.message ? e.message : '网络请求失败');
+                addRetry(wait, userText);
             });
         }
         function addRetry(wait, userText) {

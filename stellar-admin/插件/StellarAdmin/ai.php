@@ -506,6 +506,48 @@ function cmd_list_posts(array $a)
     return ['action' => 'list_posts', 'ok' => true, 'detail' => "最近 {$limit} 篇文章", 'list' => $list];
 }
 
+/* ---------- 读取文章/页面详情（AI 修改前查看，业界 Agent 标配） ---------- */
+function cmd_get_post(array $a)
+{
+    return action_get_content($a, 'post');
+}
+
+function cmd_get_page(array $a)
+{
+    return action_get_content($a, 'page');
+}
+
+function action_get_content(array $a, string $type): array
+{
+    $db = \Typecho\Db::get();
+    $cid = (int) ($a['cid'] ?? 0);
+    if ($cid <= 0) {
+        $find = trim((string) ($a['find_title'] ?? ($a['title'] ?? '')));
+        if ($find !== '') {
+            $row = $db->fetchRow($db->select('cid')->from('table.contents')
+                ->where('type = ? AND title = ?', $type, $find)->limit(1));
+            $cid = $row ? (int) $row['cid'] : 0;
+        }
+    }
+    if ($cid <= 0) {
+        return ['action' => 'get_' . $type, 'ok' => false, 'detail' => '未找到该' . ($type === 'post' ? '文章' : '页面')];
+    }
+    $row = $db->fetchRow($db->select('cid', 'title', 'status', 'created', 'text')
+        ->from('table.contents')->where('cid = ? AND type = ?', $cid, $type)->limit(1));
+    if (!$row) {
+        return ['action' => 'get_' . $type, 'ok' => false, 'detail' => '内容不存在'];
+    }
+    $text = preg_replace('/^<!--markdown-->\s*/u', '', (string) $row['text']);
+    return [
+        'action' => 'get_' . $type,
+        'ok' => true,
+        'detail' => ($type === 'post' ? '文章' : '页面') . "《{$row['title']}》（cid={$cid}，状态：{$row['status']}）",
+        'content' => mb_substr($text, 0, 2000),
+        'cid' => (int) $cid,
+        'title' => $row['title'],
+    ];
+}
+
 function cmd_get_stats()
 {
     $db = \Typecho\Db::get();
@@ -560,9 +602,12 @@ function action_command()
         . '8.{"action":"update_page","cid":页面ID,"title":"新标题或空","content":"新正文或空","status":"publish或draft或hidden或private或空","slug":"新短名或空","template":"页面模板名或空","order":排序数字或空} '
         . '9.{"action":"delete_page","cid":页面ID} '
         . '10.{"action":"list_pages","limit":数字} '
+        . '11.{"action":"get_post","cid":文章ID或"find_title":"标题"}（查看文章完整内容，修改前先查看） '
+        . '12.{"action":"get_page","cid":页面ID或"find_title":"标题"}（查看页面完整内容） '
         . '重要区分：用户说"页面/独立页面"（如"发布一个关于我页面"）时用 create_page；说"文章/帖子"时用 create_post。不要混淆。'
         . '按标题查找：update/delete 动作如果用户只说了标题没有 ID，用 "find_title":"现有标题" 字段指定对象（此时 title 字段是修改后的新标题，可为空表示不改标题）。'
         . '正文直传：如果用户提供了大段正文（指令后直接粘贴的内容），create_post/create_page 的 content 字段请填字符串 __RAW__，程序会自动取用户消息中指令之后的部分作为正文，不要复制长文本。'
+        . '内容扩写：如果用户发布时提供的内容很短/很笼统（如"内容：明天吃西红柿鸡蛋面"），不要原样发布——先分析用户意图，把内容扩写成一篇完整、结构清晰的中文 Markdown 文章（含标题层级、段落、必要细节与示例，保留用户核心信息），把完整文章直接写入 content 字段。'
         . '多轮上下文：用户可能分多轮提供信息（先说要做什么，再补充标题/内容）。请结合对话历史中用户之前提供的信息补全参数；信息不足时输出 []。'
         . '如果指令无法对应任何动作，输出 []。';
 
@@ -579,7 +624,7 @@ function action_command()
     }
     $chatMsgs[] = ['role' => 'user', 'content' => $command];
 
-    $raw = ai_chat(array_merge([['role' => 'system', 'content' => $sys]], $chatMsgs), 3000);
+    $raw = ai_chat(array_merge([['role' => 'system', 'content' => $sys]], $chatMsgs), 8000);
 
     /* 解析 JSON（容忍 ```json 包裹） */
     $raw = trim($raw);
@@ -589,7 +634,17 @@ function action_command()
     $raw = trim($raw, " \t\n\r\0\x0B,");
     $actions = json_decode($raw, true);
     if (!is_array($actions)) {
-        ai_fail('AI 返回无法解析：' . mb_substr($raw, 0, 200), 502);
+        /* 首次解析失败：重试一次（业界常见容错） */
+        $raw2 = ai_chat(array_merge([['role' => 'system', 'content' => $sys]], $chatMsgs), 8000);
+        $raw2 = trim($raw2);
+        if (preg_match('/```(?:json)?\s*([\s\S]*?)```/', $raw2, $m2)) {
+            $raw2 = trim($m2[1]);
+        }
+        $raw2 = trim($raw2, " \t\n\r\0\x0B,");
+        $actions = json_decode($raw2, true);
+        if (!is_array($actions)) {
+            ai_fail('AI 返回无法解析：' . mb_substr($raw, 0, 200), 502);
+        }
     }
     /* 过滤空动作（LLM 偶发输出 [{}] 或 [{"action":""}]） */
     $filtered = [];
@@ -607,9 +662,12 @@ function action_command()
 /* ---------- 规则快速通道（不经过 LLM，秒级响应常见指令） ---------- */
 function action_rule_quick(string $command, array $input): ?array
 {
-    /* 提取标题（《X》/「X」/"X"）与正文（指令行之后的部分） */
+    /* 提取标题：支持《X》/「X」/"X"/'X'/“X”/‘X’ 以及"标题是X/标题：X"模式 */
     $title = '';
-    if (preg_match('/[《「"]([^》」"]+)[》」"]/u', $command, $t)) {
+    if (preg_match('/[《「"\'“”‘’]([^》」"\'“”‘’]+)[》」"\'“”‘’]/u', $command, $t)) {
+        $title = trim($t[1]);
+    }
+    if ($title === '' && preg_match('/(?:标题|名字|名称)(?:是|为|叫|：|:)\s*["\'“”‘’]?([^，。;；,]+?)["\'“”‘’]?/u', $command, $t)) {
         $title = trim($t[1]);
     }
     $raw = (string) ($input['raw'] ?? '');
@@ -617,6 +675,12 @@ function action_rule_quick(string $command, array $input): ?array
     $body = trim($lines[1] ?? '');
     if ($body === '') {
         $body = trim($raw);
+    }
+    /* 同句内容："内容是X/内容：X"（无换行时用） */
+    $inlineContent = '';
+    if (preg_match('/(?:内容|正文)(?:是|为|：|:)\s*(.+)$/u', $command, $m)) {
+        $inlineContent = trim($m[1]);
+        $inlineContent = trim($inlineContent, "。；;，,！!？? \t\n\r");
     }
 
     $type = null;
@@ -626,18 +690,33 @@ function action_rule_quick(string $command, array $input): ?array
         $type = 'post';
     }
 
-    /* 1. 发布/创建页面或文章（缺标题时交给执行器正常报错） */
+    /* 1. 发布/创建页面或文章：
+       - 标题与完整内容（长文/带 Markdown 结构）齐全 → 秒回原样发布
+       - 内容简短/笼统（如"明天吃西红柿鸡蛋面"）→ 转 LLM：AI 分析意图、扩写成完整文章后再发布 */
     if ($type !== null && preg_match('/(发布|创建|新建|发表|写一(篇|个))/u', $command)) {
+        $content = $body !== '' ? '__RAW__' : $inlineContent;
+        if ($title === '' || $content === '') {
+            return null;
+        }
+        $realLen = $body !== '' ? mb_strlen($body) : mb_strlen($inlineContent);
+        $isFull = $realLen >= 50 || preg_match('/^#{1,6}\s/u', $body !== '' ? $body : $inlineContent);
+        if (!$isFull) {
+            return null; /* 内容太短/笼统 → 交给 LLM 扩写理解 */
+        }
         return ['actions' => [[
             'action' => $type === 'page' ? 'create_page' : 'create_post',
             'title' => $title,
-            'content' => $body !== '' ? '__RAW__' : '',
+            'content' => $content,
             'status' => 'publish',
         ]]];
     }
 
-    /* 2. 删除页面/文章 */
+    /* 2. 删除页面/文章（同时含"文章"和"页面"的多目标删除交给 LLM） */
     if ($type !== null && preg_match('/(删除|移除|删掉|去掉)/u', $command) && $title !== '') {
+        $hasBoth = preg_match('/(文章|帖子)/u', $command) && preg_match('/(页面|独立页面)/u', $command);
+        if ($hasBoth) {
+            return null;
+        }
         return ['actions' => [[
             'action' => $type === 'page' ? 'delete_page' : 'delete_post',
             'find_title' => $title,
@@ -738,6 +817,7 @@ function action_run_actions(array $actions, array $input)
             'get_stats' => 'cmd_get_stats', 'update_option' => 'cmd_update_option',
             'create_page' => 'cmd_create_page', 'update_page' => 'cmd_update_page',
             'delete_page' => 'cmd_delete_page', 'list_pages' => 'cmd_list_pages',
+            'get_post' => 'cmd_get_post', 'get_page' => 'cmd_get_page',
         ];
         if (isset($fn[$name]) && is_array($a)) {
             $results[] = $fn[$name]($a);
@@ -902,13 +982,39 @@ function action_chat()
     }
     /* 限制上下文长度，防刷爆 */
     $messages = array_slice($messages, -20);
-    $sys = '你是嵌入在 Typecho 博客后台的写作助手「Stellar AI」。用简体中文回答；'
-        . '用户可能让你：润色/改写/翻译文章、生成文章大纲与全文、提取摘要、推荐标签、解释代码或 Markdown 语法。'
-        . '涉及文章内容时直接输出可用的 Markdown。';
+    $last = end($messages);
+    $userText = is_array($last) ? trim((string) ($last['content'] ?? '')) : '';
+
+    /* 规则快速通道：明确执行动词 + 参数齐全的简单指令 → 秒回执行 */
+    if ($userText !== '' && preg_match('/(发布|创建|新建|发表|删除|移除|删掉|去掉|修改|更新|列出|统计|概况|改成|改为|设置为|设为)/u', $userText)) {
+        $quick = action_rule_quick($userText, ['raw' => $userText] + $input);
+        if ($quick !== null && isset($quick['actions'])) {
+            action_run_actions($quick['actions'], $input);
+            return;
+        }
+    }
+
+    $sys = '你是嵌入在 Typecho 博客后台的智能助手「Stellar AI」，能力对标网页版 AI 助手。用简体中文回答。'
+        . '你的能力：'
+        . '1. 分析理解：用户提供材料、想法、内容（如"明天要吃什么 / 明天吃西红柿鸡蛋面"）时，分析并识别其中的标题、正文、意图，给出清晰解读（如"我理解：标题是《明天要吃什么》，内容是《明天吃西红柿鸡蛋面》。需要我帮你发布吗？"），不要执行任何操作。'
+        . '2. 写作辅助：润色/改写/翻译/生成文章、提取摘要、推荐标签、解释代码或 Markdown 语法，直接输出可用的 Markdown。'
+        . '3. 执行操作：用户明确要求执行网站操作时，只输出 JSON 动作数组（不要解释、不要代码块），程序会执行并反馈结果。可用动作：'
+        . '{"action":"create_post","title":"标题","content":"Markdown正文","category":"分类或空","tags":"标签或空","status":"publish或draft或waiting","slug":"短名或空"}；'
+        . '{"action":"update_post","cid":文章ID或"find_title":"现有标题","title":"新标题或空","content":"新正文或空","status":"...或空"}；'
+        . '{"action":"delete_post","cid":文章ID或"find_title":"标题"}；{"action":"list_posts","limit":数字}；{"action":"get_post","cid":或"find_title":"标题"}；'
+        . '{"action":"create_page","title":"标题","content":"Markdown正文","slug":"短名或空","status":"publish或draft或hidden"}；'
+        . '{"action":"update_page","cid":或"find_title":"标题","title":"新标题或空","content":"新正文或空","status":"...或空","slug":"新短名或空","template":"模板或空","order":数字或空}；'
+        . '{"action":"delete_page","cid":或"find_title":"标题"}；{"action":"list_pages","limit":数字}；{"action":"get_page","cid":或"find_title":"标题"}；'
+        . '{"action":"get_stats"}；{"action":"update_option","key":"title或description或keywords","value":"新值"}。'
+        . '规则：'
+        . '- 用户说"页面/独立页面"用 create_page；说"文章/帖子"用 create_post。'
+        . '- 用户提供正文（指令后粘贴的大段内容）时，create_post/create_page 的 content 填字符串 __RAW__，程序自动取用户消息中指令之后的部分。'
+        . '- 用户提供的内容很短很笼统时（如"内容：明天吃西红柿鸡蛋面"），不要原样发布——把内容扩展成完整的中文 Markdown 文章写入 content。'
+        . '- 结合对话历史：用户分多轮提供信息时（先给材料再让发布），从历史中提取标题/内容补全参数。'
+        . '- 只有用户明确表达执行意图（如"发布/创建/删除/修改/列出/统计/改成"）才输出动作；仅提供内容、询问、分析时，用自然语言回复你的理解与分析（如"我理解：标题是《明天要吃什么》，内容是《明天吃西红柿鸡蛋面》。需要我帮你发布吗？"），不要输出 [] 或任何 JSON。';
 
     /* 联网：检测用户消息中的 URL，自动抓取注入上下文 */
     $web = null;
-    $last = end($messages);
     if (isset($last['content']) && is_string($last['content'])
         && preg_match_all('#https?://[^\s<>"\']+#i', $last['content'], $m)) {
         foreach ($m[0] as $url) {
@@ -926,8 +1032,41 @@ function action_chat()
         }
     }
 
-    $out = ai_chat(array_merge([['role' => 'system', 'content' => $sys]], $messages), 4000);
-    ai_json(['ok' => true, 'reply' => trim($out), 'web' => $web]);
+    $out = ai_chat(array_merge([['role' => 'system', 'content' => $sys]], $messages), 8000);
+    $out = trim($out);
+
+    /* 若 LLM 输出 JSON 动作数组（用户明确执行指令）→ 执行并返回结果 */
+    $tryRaw = $out;
+    if (preg_match('/```(?:json)?\s*([\s\S]*?)```/', $tryRaw, $m)) {
+        $tryRaw = trim($m[1]);
+    }
+    $tryRaw = trim($tryRaw, " \t\n\r\0\x0B,");
+    if (strpos($tryRaw, '[') === 0 || strpos($tryRaw, '{') === 0) {
+        $decoded = json_decode($tryRaw, true);
+        if (is_array($decoded)) {
+            /* 兼容单个对象（LLM 偶发输出 {…} 而非 [{…}]） */
+            $actions = isset($decoded['action']) ? [$decoded] : $decoded;
+            $filtered = [];
+            foreach ($actions as $a) {
+                if (is_array($a) && (string) ($a['action'] ?? '') !== '') {
+                    $filtered[] = $a;
+                }
+            }
+            if ($filtered) {
+                /* 执行动作，把 results 拼成回复文本 */
+                $input['messages'] = $messages;
+                action_run_actions($filtered, $input);
+                return;
+            }
+        }
+    }
+
+    /* 空回复兜底（LLM 偶发输出空/[] 时给友好引导） */
+    if (trim($out) === '' || trim($out) === '[]') {
+        $out = '我理解你的意思了。需要我做什么吗？（例如：发布这篇文章、帮我润色，或者继续补充内容）';
+    }
+
+    ai_json(['ok' => true, 'reply' => $out, 'web' => $web]);
 }
 
 /* ---------- 路由 ---------- */
