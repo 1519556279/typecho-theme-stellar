@@ -5,6 +5,11 @@ usr/
 *.db-journal
 PROJECT-MEMORY.md
 
+# 宝塔面板凭据（绝不可提交）
+.bt-config.json
+.bt-cookie.txt
+.bt-*
+
 # 会话/宿主元数据
 .reasonix/
 
