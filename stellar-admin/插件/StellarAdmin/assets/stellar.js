@@ -700,13 +700,22 @@
         function doChat(userText, retryWait) {
             if (retryWait) retryWait.remove();
             var wait = addMsg('bot', '🤔 正在思考…');
-            /* 统一走 chat：AI 自主判断——分析回复或执行操作（结果同样在此展示） */
-            aiFetch({ action: 'chat', messages: messages }).then(function (d) {
-                if (!d.ok) {
-                    wait.querySelector('.sa-chat-bubble').innerHTML = '⚠️ ' + escapeHtml(d.error || '出错了');
-                    addRetry(wait, userText);
-                    return;
-                }
+            /* 限流自动重试（免费模型偶发 429）：最多自动重试 2 次，间隔 10 秒 */
+            var rateLimitRetries = 0;
+            function doChatInner() {
+                /* 统一走 chat：AI 自主判断——分析回复或执行操作（结果同样在此展示） */
+                aiFetch({ action: 'chat', messages: messages }).then(function (d) {
+                    if (!d.ok) {
+                        if (d.error && /限流|繁忙/.test(d.error) && rateLimitRetries < 2) {
+                            rateLimitRetries++;
+                            wait.querySelector('.sa-chat-bubble').innerHTML = '⏳ AI 有点忙（限流），' + (rateLimitRetries === 1 ? '正在自动重试…' : '再试一次…');
+                            setTimeout(doChatInner, 10000);
+                            return;
+                        }
+                        wait.querySelector('.sa-chat-bubble').innerHTML = '⚠️ ' + escapeHtml(d.error || '出错了');
+                        addRetry(wait, userText);
+                        return;
+                    }
                 /* 执行操作结果（后端执行后返回 results） */
                 var results = d && d.results;
                 if (results && results.length) {
@@ -767,6 +776,8 @@
                 wait.querySelector('.sa-chat-bubble').innerHTML = '⚠️ ' + escapeHtml(e && e.message ? e.message : '网络请求失败');
                 addRetry(wait, userText);
             });
+            }
+            doChatInner();
         }
         function addRetry(wait, userText) {
             var retry = doc.createElement('button');

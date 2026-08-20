@@ -118,7 +118,7 @@ function ai_chat(array $messages, int $maxTokens = 3000): string
         $err = curl_error($ch);
         $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         if ($code == 429 && $try < 3) {
-            sleep(2);
+            sleep(5);
             continue;
         }
         break;
@@ -792,6 +792,10 @@ function action_run_actions(array $actions, array $input)
         $body = trim($lines[1] ?? '');
         if ($body === '') {
             $body = trim($userRaw);
+            /* 单行模式：剥离开头指令前缀（"发布一个关于页面 正文…"） */
+            $body = preg_replace('/^发布(?:一(?:个|篇|条))?(?:[^，。；\n]{1,8}?)(?:页面|文章|帖子)?(?:，|：|:|\s|$)/u', '', $body, 1);
+            $body = preg_replace('/^(?:内容|正文)[:：]?\s*/u', '', $body, 1);
+            $body = trim($body, "，。；, \t\n\r");
         }
         if ($body !== '') {
             foreach ($actions as &$a) {
@@ -999,15 +1003,7 @@ function action_chat()
     $messages = array_slice($messages, -20);
     $last = end($messages);
     $userText = is_array($last) ? trim((string) ($last['content'] ?? '')) : '';
-
-    /* 规则快速通道：明确执行动词 + 参数齐全的简单指令 → 秒回执行 */
-    if ($userText !== '' && preg_match('/(发布|创建|新建|发表|删除|移除|删掉|去掉|修改|更新|列出|统计|概况|改成|改为|设置为|设为)/u', $userText)) {
-        $quick = action_rule_quick($userText, ['raw' => $userText] + $input);
-        if ($quick !== null && isset($quick['actions'])) {
-            action_run_actions($quick['actions'], $input);
-            return;
-        }
-    }
+    /* 全部走 LLM 思考：不做规则秒回（用户要求像正常大模型一样对话理解后执行） */
 
     $sys = '你是嵌入在 Typecho 博客后台的智能助手「Stellar AI」，能力对标网页版 AI 助手。用简体中文回答。'
         . '你的能力：'
@@ -1069,8 +1065,8 @@ function action_chat()
                 }
             }
             if ($filtered) {
-                /* 执行动作，把 results 拼成回复文本 */
-                $input['messages'] = $messages;
+                /* 执行动作：__RAW__ 占位符从用户最后消息提取正文（chat 无 raw 字段） */
+                $input['raw'] = $userText;
                 action_run_actions($filtered, $input);
                 return;
             }
