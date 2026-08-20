@@ -263,6 +263,8 @@ function cmd_create_post(array $a)
     $status = in_array($a['status'] ?? '', ['publish', 'draft', 'waiting'], true) ? $a['status'] : 'publish';
     $now = time();
     $text = '<!--markdown-->' . $content;
+    /* 去重标题：正文开头的一级标题删除（页面/文章标题已由模板显示） */
+    $text = preg_replace('/^<!--markdown-->\s*#\s+[^\n]*\n+/u', '<!--markdown-->', $text, 1);
 
     $cid = (int) $db->query($db->insert('table.contents')->rows([
         'title' => $title, 'slug' => $slug, 'created' => $now, 'modified' => $now,
@@ -332,6 +334,8 @@ function cmd_create_page(array $a)
     $status = in_array($a['status'] ?? '', ['publish', 'draft', 'hidden'], true) ? $a['status'] : 'publish';
     $now = time();
     $text = '<!--markdown-->' . $content;
+    /* 去重标题：正文开头的一级标题删除（页面/文章标题已由模板显示） */
+    $text = preg_replace('/^<!--markdown-->\s*#\s+[^\n]*\n+/u', '<!--markdown-->', $text, 1);
 
     $cid = (int) $db->query($db->insert('table.contents')->rows([
         'title' => $title, 'slug' => $slug, 'created' => $now, 'modified' => $now,
@@ -370,6 +374,8 @@ function cmd_update_page(array $a)
     $newContent = trim((string) ($a['content'] ?? ''));
     if ($newContent !== '') {
         $rows['text'] = '<!--markdown-->' . $newContent;
+        /* 去重标题：正文开头的一级标题删除（页面/文章标题已由模板显示） */
+        $rows['text'] = preg_replace('/^<!--markdown-->\s*#\s+[^\n]*\n+/u', '<!--markdown-->', $rows['text'], 1);
     }
     if (!empty($a['status']) && in_array($a['status'], ['publish', 'draft', 'hidden', 'private'], true)) {
         $rows['status'] = $a['status'];
@@ -456,6 +462,8 @@ function cmd_update_post(array $a)
     $newContent = trim((string) ($a['content'] ?? ''));
     if ($newContent !== '') {
         $rows['text'] = '<!--markdown-->' . $newContent;
+        /* 去重标题：正文开头的一级标题删除（页面/文章标题已由模板显示） */
+        $rows['text'] = preg_replace('/^<!--markdown-->\s*#\s+[^\n]*\n+/u', '<!--markdown-->', $rows['text'], 1);
     }
     if (!empty($a['status']) && in_array($a['status'], ['publish', 'draft', 'waiting', 'hidden', 'private'], true)) {
         $rows['status'] = $a['status'];
@@ -822,7 +830,8 @@ function action_run_actions(array $actions, array $input)
             if ($title4gen !== '') {
                 $sys4gen = '你是中文博客写作助手。用户要发布一篇题为「' . $title4gen . '」的'
                     . ($name === 'create_page' ? '独立页面' : '文章') . '，但没有提供正文。'
-                    . '请根据标题写一篇完整、结构清晰的中文 Markdown 文章（含标题层级、段落、必要的细节与示例），直接输出 Markdown 正文，不要解释。'
+                    . '请根据标题写一篇完整、结构清晰的中文 Markdown 文章（含二级标题、段落、必要的细节与示例），直接输出 Markdown 正文，不要解释。'
+                    . '注意：正文不要重复文章标题，不要以"# 标题"开头，直接从"## 二级标题"或正文段落开始。'
                     . ($userRaw4gen !== '' ? "\n用户补充的信息（可能包含内容要点）：\n" . mb_substr($userRaw4gen, 0, 500) : '');
                 $a['content'] = ai_chat([
                     ['role' => 'system', 'content' => $sys4gen],
@@ -1021,7 +1030,9 @@ function action_chat()
         . '- 用户说"页面/独立页面"用 create_page；说"文章/帖子"用 create_post。'
         . '- 用户提供正文（指令后粘贴的大段内容）时，create_post/create_page 的 content 填字符串 __RAW__，程序自动取用户消息中指令之后的部分。'
         . '- 用户提供的内容很短很笼统时（如"内容：明天吃西红柿鸡蛋面"），不要原样发布——把内容扩展成完整的中文 Markdown 文章写入 content。'
-        . '- 用户只说发布没说内容时（如"发布关于我页面"），根据标题和对话上下文自动生成完整文章写入 content，不要留空。'
+        . '- 用户只说发布没说内容时（如"发布关于我页面"、"写一篇关于AI模型的文章"）：不要直接执行 create——先输出生成好的完整 Markdown 内容展示给用户，并在末尾询问"内容如上，确认发布吗？回复【发布】即可"。用户明确确认后再输出 create 动作。'
+        . '- 用户回复简短确认词（发布/可以/好的/确认/OK/嗯/发吧）时，直接用之前展示过的内容输出 create 动作（content 填完整内容或 __RAW__），不要再次展示内容。'
+        . '- 生成的文章正文不要重复文章标题：不要以"# 标题"开头（页面已显示标题），直接从"## 二级标题"或正文段落开始。'
         . '- 结合对话历史：用户分多轮提供信息时（先给材料再让发布），从历史中提取标题/内容补全参数。'
         . '- 只有用户明确表达执行意图（如"发布/创建/删除/修改/列出/统计/改成"）才输出动作；仅提供内容、询问、分析时，用自然语言回复你的理解与分析（如"我理解：标题是《明天要吃什么》，内容是《明天吃西红柿鸡蛋面》。需要我帮你发布吗？"），不要输出 [] 或任何 JSON。';
 
