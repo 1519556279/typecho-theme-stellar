@@ -263,8 +263,8 @@ function cmd_create_post(array $a)
     $status = in_array($a['status'] ?? '', ['publish', 'draft', 'waiting'], true) ? $a['status'] : 'publish';
     $now = time();
     $text = '<!--markdown-->' . $content;
-    /* 去重标题：正文开头的一级标题删除（页面/文章标题已由模板显示） */
-    $text = preg_replace('/^<!--markdown-->\s*#\s+[^\n]*\n+/u', '<!--markdown-->', $text, 1);
+    /* 去重标题：正文首行若与文章标题相同（任意#级别）则删除 */
+    $text = sa_strip_dup_title($text, $title);
 
     $cid = (int) $db->query($db->insert('table.contents')->rows([
         'title' => $title, 'slug' => $slug, 'created' => $now, 'modified' => $now,
@@ -294,6 +294,24 @@ function cmd_create_post(array $a)
         }
     }
     return ['action' => 'create_post', 'ok' => true, 'detail' => "已发布《{$title}》（cid={$cid}，状态：{$status}）"];
+}
+
+/* 去重标题：正文第一行若是与文章标题相同（任意 # 级别）则删除（页面已显示标题） */
+function sa_strip_dup_title(string $text, string $title): string
+{
+    $title = trim($title);
+    if ($title === '') {
+        return $text;
+    }
+    if (preg_match('/^<!--markdown-->\s*#{1,6}\s+([^\n]*)/u', $text, $m)) {
+        $first = trim($m[1]);
+        if ($first !== '' && ($first === $title
+            || mb_strpos($first, $title) !== false
+            || mb_strpos($title, $first) !== false)) {
+            return preg_replace('/^<!--markdown-->\s*#{1,6}\s+[^\n]*\n+/u', '<!--markdown-->', $text, 1);
+        }
+    }
+    return $text;
 }
 
 function cmd_find_meta(string $name, string $type): ?int
@@ -334,8 +352,8 @@ function cmd_create_page(array $a)
     $status = in_array($a['status'] ?? '', ['publish', 'draft', 'hidden'], true) ? $a['status'] : 'publish';
     $now = time();
     $text = '<!--markdown-->' . $content;
-    /* 去重标题：正文开头的一级标题删除（页面/文章标题已由模板显示） */
-    $text = preg_replace('/^<!--markdown-->\s*#\s+[^\n]*\n+/u', '<!--markdown-->', $text, 1);
+    /* 去重标题：正文首行若与文章标题相同（任意#级别）则删除 */
+    $text = sa_strip_dup_title($text, $title);
 
     $cid = (int) $db->query($db->insert('table.contents')->rows([
         'title' => $title, 'slug' => $slug, 'created' => $now, 'modified' => $now,
@@ -374,8 +392,8 @@ function cmd_update_page(array $a)
     $newContent = trim((string) ($a['content'] ?? ''));
     if ($newContent !== '') {
         $rows['text'] = '<!--markdown-->' . $newContent;
-        /* 去重标题：正文开头的一级标题删除（页面/文章标题已由模板显示） */
-        $rows['text'] = preg_replace('/^<!--markdown-->\s*#\s+[^\n]*\n+/u', '<!--markdown-->', $rows['text'], 1);
+        /* 去重标题：正文首行若与文章标题相同（任意#级别）则删除 */
+        $rows['text'] = sa_strip_dup_title($rows['text'], $rows['title'] ?? $find ?? '');
     }
     if (!empty($a['status']) && in_array($a['status'], ['publish', 'draft', 'hidden', 'private'], true)) {
         $rows['status'] = $a['status'];
@@ -462,8 +480,8 @@ function cmd_update_post(array $a)
     $newContent = trim((string) ($a['content'] ?? ''));
     if ($newContent !== '') {
         $rows['text'] = '<!--markdown-->' . $newContent;
-        /* 去重标题：正文开头的一级标题删除（页面/文章标题已由模板显示） */
-        $rows['text'] = preg_replace('/^<!--markdown-->\s*#\s+[^\n]*\n+/u', '<!--markdown-->', $rows['text'], 1);
+        /* 去重标题：正文首行若与文章标题相同（任意#级别）则删除 */
+        $rows['text'] = sa_strip_dup_title($rows['text'], $rows['title'] ?? $find ?? '');
     }
     if (!empty($a['status']) && in_array($a['status'], ['publish', 'draft', 'waiting', 'hidden', 'private'], true)) {
         $rows['status'] = $a['status'];
