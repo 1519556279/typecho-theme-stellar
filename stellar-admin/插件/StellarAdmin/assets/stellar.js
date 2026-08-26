@@ -733,6 +733,7 @@
                         return '<div class="sa-cmd-item">' + icon + ' ' + escapeHtml(r.action || '') + '：' + escapeHtml(r.detail || '') + '</div>' + extra;
                     }).join('');
                     wait.querySelector('.sa-chat-bubble').innerHTML = html;
+                    chat.scrollTop = chat.scrollHeight; /* 结果填充后自动滚到底部 */
                     messages.push({ role: 'assistant', content: results.map(function (r) { return r.detail || ''; }).join('\n') });
                     saveHistory();
                     var okCount = results.filter(function (r) { return r.ok; }).length;
@@ -752,6 +753,7 @@
                     replyHtml = '🔗 已联网查看：<a href="' + escapeHtml(d.web.url) + '" target="_blank" rel="noopener">' + escapeHtml(d.web.title) + '</a><br>';
                 }
                 wait.querySelector('.sa-chat-bubble').innerHTML = replyHtml + escapeHtml(d.reply || '').replace(/\n/g, '<br>');
+                chat.scrollTop = chat.scrollHeight; /* 回复填充后自动滚到底部 */
                 messages.push({ role: 'assistant', content: d.reply || '' });
                 saveHistory();
                 /* 生成文章时提供复制按钮 */
