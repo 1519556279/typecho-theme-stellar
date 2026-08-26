@@ -29,6 +29,11 @@ if (!$user->hasLogin()) {
 if (!$user->pass('administrator', true)) {
     ai_fail('需要管理员权限', 403);
 }
+/* AI 功能总开关（插件配置「AI 助手」停用时拒绝所有请求） */
+$aiCfg = \Typecho\Widget::widget('Widget_Options')->plugin('StellarAdmin');
+if (($aiCfg->sa_enable_ai ?? '1') === '0') {
+    ai_fail('AI 助手已停用（可在插件设置中重新启用）', 403);
+}
 
 /* ---------- CSRF 防护：校验 Origin/Referer 同源 ---------- */
 $siteHost = strtolower(parse_url($options->siteUrl, PHP_URL_HOST) ?: '');
@@ -58,7 +63,7 @@ try {
     ai_fail('AI 服务未配置：请到 后台 → 插件 → StellarAdmin → 设置 中填写 API Key', 400);
 }
 
-function ai_chat(array $messages, int $maxTokens = 3000): string
+function ai_chat(array $messages, int $maxTokens = 8000): string
 {
     global $aiConfig;
     $providers = PROVIDERS;

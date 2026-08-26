@@ -2,6 +2,7 @@
 (function () {
     'use strict';
     var doc = document, root = doc.documentElement;
+    var saFlags = window.__saFlags || { ui: true, ai: true }; /* 插件配置开关：美化 / AI 助手 */
     var KEY_T = 'stellar-admin-theme', KEY_A = 'stellar-admin-accent', KEY_C = 'stellar-admin-collapsed';
     var ACCENTS = [
         ['default', '#5b5bd6'], ['blue', '#2563eb'], ['emerald', '#0d9488'],
@@ -514,11 +515,13 @@
         }
         var aiBtn = doc.getElementById('sa-ai-btn');
         if (aiBtn) {
-            aiBtn.addEventListener('click', function () { aiPolish('通用', aiBtn, 'AI 润色'); });
+            if (!saFlags.ai) { aiBtn.hidden = true; }
+            else { aiBtn.addEventListener('click', function () { aiPolish('通用', aiBtn, 'AI 润色'); }); }
         }
         var autoBtn = doc.getElementById('sa-auto-btn');
         if (autoBtn) {
-            autoBtn.addEventListener('click', function () { aiPolish('auto', autoBtn, '智能优化'); });
+            if (!saFlags.ai) { autoBtn.hidden = true; }
+            else { autoBtn.addEventListener('click', function () { aiPolish('auto', autoBtn, '智能优化'); }); }
         }
     }
 
@@ -885,23 +888,27 @@
     /* ---------- 启动 ---------- */
     function init() {
         if (doc.querySelector('.typecho-login')) {
-            decorateLogin();
+            if (saFlags.ui) decorateLogin();
             return;
         }
-        setupSidebar();
-        bindCollapse();
-        bindUserMenu();
-        bindThemeButtons();
-        bindBatch();
-        bindHelp();
+        if (saFlags.ui) {
+            setupSidebar();
+            bindCollapse();
+            bindUserMenu();
+            bindThemeButtons();
+            bindBatch();
+            bindHelp();
+        }
         initPage();
     }
-    /* 页面级绑定 */
+    /* 页面级绑定（按插件开关分别加载美化 / AI 模块） */
     function initPage() {
-        bindEditorTools();
-        bindCmd();
-        bindAiConsole();
-        bindModelDetect();
+        if (saFlags.ui) bindEditorTools();
+        if (saFlags.ai) {
+            bindCmd();
+            bindAiConsole();
+            bindModelDetect();
+        }
     }
     if (doc.readyState === 'loading') {
         doc.addEventListener('DOMContentLoaded', init);
