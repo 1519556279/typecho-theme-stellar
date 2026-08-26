@@ -1628,5 +1628,3 @@ html[data-theme] .typecho-login { transition: background-color .3s ease, color .
 
 
 
-/* PJAX 局部刷新：内容区淡入淡出（左侧栏不动） */
-.sa-content { transition: opacity .15s ease; }

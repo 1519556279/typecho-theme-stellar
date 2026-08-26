@@ -882,83 +882,6 @@
         });
     }
 
-    /* ---------- PJAX 局部刷新（左侧栏不动，只切换右侧内容，告别整页闪白） ---------- */
-    var PJAX_SKIP = /(theme-editor|options-plugin|options-theme|category|user|media)\.php/;
-    var pjaxSeq = 0; /* 导航序号：丢弃过期响应 */
-    function bindPjax() {
-        if (!doc.querySelector('.sa-app')) return; /* 仅后台布局页 */
-        doc.addEventListener('click', function (e) {
-            var a = e.target && e.target.closest ? e.target.closest('a') : null;
-            if (!a) return;
-            if (!a.closest('.sa-nav, .sa-topbar, .sa-user-menu')) return;
-            if (a.classList.contains('sa-parent')) return; /* 父级菜单：仅展开子菜单，不跳转 */
-            var href = a.getAttribute('href');
-            if (!href || !/\.php/.test(href)) return;
-            if (/action\/|logout/i.test(href)) return; /* 登出/动作必须整页 */
-            if (e.metaKey || e.ctrlKey || e.shiftKey || a.target === '_blank') return;
-            var url = new URL(href, location.href);
-            if (url.origin !== location.origin || url.pathname.indexOf('/admin/') !== 0) return;
-            if (PJAX_SKIP.test(url.pathname)) return; /* 复杂页面（编辑器/动态表单）整页跳转 */
-            e.preventDefault();
-            pjaxTo(url.href);
-        });
-        window.addEventListener('popstate', function () { pjaxTo(location.href, true); });
-    }
-    function pjaxTo(url, fromPop) {
-        if (!fromPop && url === location.href) return;
-        /* 内容容器：自定义模板用 .sa-content，Typecho 原版页面用 main.main */
-        var content = doc.querySelector('.sa-content') || doc.querySelector('main.main');
-        if (!content) { location.href = url; return; }
-        var seq = ++pjaxSeq; /* 丢弃过期响应（快速前进/后退竞态） */
-        if (isDesktop()) content.style.opacity = '.3'; /* 桌面端淡出过渡；手机端恢复 Typecho 默认（无动画） */
-        /* 注意：不能带 X-Requested-With 头——Typecho 检测到会返回精简版 HTML（无完整结构） */
-        fetch(url)
-            .then(function (r) { return r.ok ? r.text() : Promise.reject(new Error('HTTP ' + r.status)); })
-            .then(function (html) {
-                if (seq !== pjaxSeq) return; /* 已被更新的导航取代 */
-                var nd = new DOMParser().parseFromString(html, 'text/html');
-                var nc = nd.querySelector('.sa-content') || nd.querySelector('main.main');
-                if (!nc) { throw new Error('内容解析失败'); }
-                content.innerHTML = nc.innerHTML;
-                /* 重执行页面脚本（逐个隔离，单个失败不影响切换） */
-                content.querySelectorAll('script').forEach(function (s) {
-                    try {
-                        var ns = doc.createElement('script');
-                        if (s.src) { ns.src = s.src; } else { ns.textContent = s.textContent; }
-                        s.replaceWith(ns);
-                    } catch (e) {}
-                });
-                /* 标题、URL、高亮、面包屑 */
-                if (nd.title) { doc.title = nd.title; }
-                if (!fromPop) { history.pushState({}, '', url); }
-                syncSidebar(nd);
-                initPage();
-                content.style.opacity = '1';
-                window.scrollTo(0, 0);
-                var pjaxApp = doc.querySelector('.sa-app');
-                if (pjaxApp && !isDesktop()) pjaxApp.classList.remove('sa-nav-open'); /* 手机端跳转后自动收起抽屉，避免遮挡 */
-                window.__saPjaxCount = (window.__saPjaxCount || 0) + 1; /* 诊断标记 */
-            })
-            .catch(function () { location.href = url; });
-    }
-    function syncSidebar(nd) {
-        var oldNav = doc.querySelector('.sa-nav');
-        var newNav = nd.querySelector('.sa-nav');
-        if (oldNav && newNav) {
-            var oldLis = oldNav.querySelectorAll('li');
-            var newLis = newNav.querySelectorAll('li');
-            for (var i = 0; i < oldLis.length; i++) {
-                var nli = newLis[i];
-                if (!nli) continue;
-                if (nli.classList.contains('sa-current')) oldLis[i].classList.add('sa-current');
-                else oldLis[i].classList.remove('sa-current');
-            }
-        }
-        var crumb = doc.querySelector('.sa-crumb');
-        var ncrumb = nd.querySelector('.sa-crumb');
-        if (crumb && ncrumb) crumb.textContent = ncrumb.textContent;
-    }
-
     /* ---------- 启动 ---------- */
     function init() {
         if (doc.querySelector('.typecho-login')) {
@@ -971,10 +894,9 @@
         bindThemeButtons();
         bindBatch();
         bindHelp();
-        bindPjax();
         initPage();
     }
-    /* 页面级绑定（PJAX 切换内容后重新执行） */
+    /* 页面级绑定 */
     function initPage() {
         bindEditorTools();
         bindCmd();
