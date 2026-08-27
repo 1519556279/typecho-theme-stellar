@@ -591,6 +591,7 @@
 
     /* ---------- 登录页装饰 ---------- */
     function decorateLogin() {
+        try { if (sessionStorage.getItem('sa-login-anim')) return; sessionStorage.setItem('sa-login-anim', '1'); } catch (e) {}
         if (!doc.querySelector('.typecho-login')) return;
         var bar = doc.createElement('div');
         bar.className = 'sa-login-bar';
@@ -657,6 +658,31 @@
         var chat = doc.getElementById('sa-chat');
         var chatText = doc.getElementById('sa-chat-text');
         var chatSend = doc.getElementById('sa-chat-send');
+        /* 轻量 Markdown 渲染（标题/粗体/斜体/行内代码/代码块/引用/列表/分隔线） */
+        function mdRender(src) {
+            var s = escapeHtml(String(src || ''));
+            var blocks = [];
+            s = s.replace(/```([\s\S]*?)```/g, function (_, c) {
+                blocks.push('<pre><code>' + c + '</code></pre>');
+                return '\u0000' + (blocks.length - 1) + '\u0000';
+            });
+            s = s.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+            s = s.replace(/^### (.*)$/gm, '<h3>$1</h3>');
+            s = s.replace(/^## (.*)$/gm, '<h2>$1</h2>');
+            s = s.replace(/^# (.*)$/gm, '<h1>$1</h1>');
+            s = s.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+            s = s.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+            s = s.replace(/^&gt; (.*)$/gm, '<blockquote>$1</blockquote>');
+            s = s.replace(/((?:^[-*] .*(?:\n|$))+)/gm, function (m) {
+                return '<ul>' + m.trim().split('\n').map(function (l) {
+                    return '<li>' + l.replace(/^[-*] /, '') + '</li>';
+                }).join('') + '</ul>';
+            });
+            s = s.replace(/^---+$/gm, '<hr>');
+            s = s.replace(/\u0000(\d+)\u0000/g, function (_, i) { return blocks[+i]; });
+            s = s.replace(/\n/g, '<br>');
+            return '<div class="sa-md">' + s + '</div>';
+        }
         /* 对话历史：localStorage 持久化，超上限自动删最旧 */
         var HISTORY_KEY = 'sa-ai-history';
         var HISTORY_MAX = 40;
@@ -672,21 +698,41 @@
             } catch (e) {}
         }
         var messages = loadHistory();
-        /* 渲染历史对话 */
-        messages.forEach(function (m) {
-            if (m && m.role === 'user') {
-                addMsg('user', String(m.content));
-            } else if (m && m.role === 'assistant') {
-                addMsg('bot', String(m.content));
+        /* 渲染历史对话（只显示最近 10 条，可展开更早） */
+        var HISTORY_SHOW = 10;
+        var showAll = false;
+        function renderHistory() {
+            chat.innerHTML = '';
+            if (messages.length > HISTORY_SHOW && !showAll) {
+                var moreBtn = doc.createElement('button');
+                moreBtn.type = 'button';
+                moreBtn.className = 'btn btn-s sa-copy-btn';
+                moreBtn.style.alignSelf = 'center';
+                moreBtn.textContent = '↑ 查看更早的对话（' + (messages.length - HISTORY_SHOW) + ' 条）';
+                moreBtn.addEventListener('click', function () {
+                    showAll = true;
+                    renderHistory();
+                    chat.scrollTop = chat.scrollHeight;
+                });
+                chat.appendChild(moreBtn);
             }
-        });
-        if (chat) chat.scrollTop = chat.scrollHeight;
-        function addMsg(role, text) {
+            var list = showAll ? messages : messages.slice(-HISTORY_SHOW);
+            list.forEach(function (m) {
+                if (m && m.role === 'user') {
+                    addMsg('user', String(m.content));
+                } else if (m && m.role === 'assistant') {
+                    addMsg('bot', String(m.content));
+                }
+            });
+            if (chat) chat.scrollTop = chat.scrollHeight;
+        }
+        renderHistory();
+        function addMsg(role, text, raw) {
             var div = doc.createElement('div');
             div.className = 'sa-chat-msg ' + (role === 'user' ? 'me' : 'bot');
             div.innerHTML = role === 'user'
                 ? '<div class="sa-chat-bubble me">' + escapeHtml(text) + '</div>'
-                : '<span class="sa-chat-avatar">✦</span><div class="sa-chat-bubble">' + escapeHtml(text).replace(/\n/g, '<br>') + '</div>';
+                : '<span class="sa-chat-avatar">✦</span><div class="sa-chat-bubble">' + (raw ? text : mdRender(text)) + '</div>';
             chat.appendChild(div);
             chat.scrollTop = chat.scrollHeight;
             return div;
@@ -702,8 +748,8 @@
         }
         function doChat(userText, retryWait) {
             if (retryWait) retryWait.remove();
-            var wait = addMsg('bot', '🤔 正在思考…');
-            /* 限流自动重试（免费模型偶发 429）：最多自动重试 2 次，间隔 10 秒 */
+            var wait = addMsg('bot', '<span class="sa-dots"><span></span><span></span><span></span></span>', true);
+            /* 限流自动重试（免费模型偶发 429）：最多自动重试 2 次，间隔 10 秒（带倒计时） */
             var rateLimitRetries = 0;
             function doChatInner() {
                 /* 统一走 chat：AI 自主判断——分析回复或执行操作（结果同样在此展示） */
@@ -711,8 +757,13 @@
                     if (!d.ok) {
                         if (d.error && /限流|繁忙/.test(d.error) && rateLimitRetries < 2) {
                             rateLimitRetries++;
-                            wait.querySelector('.sa-chat-bubble').innerHTML = '⏳ AI 有点忙（限流），' + (rateLimitRetries === 1 ? '正在自动重试…' : '再试一次…');
-                            setTimeout(doChatInner, 10000);
+                            var sec = 10, bubble = wait.querySelector('.sa-chat-bubble');
+                            bubble.innerHTML = '⏳ AI 有点忙（限流），<b>' + sec + '</b> 秒后自动重试…';
+                            var iv = setInterval(function () {
+                                sec--;
+                                bubble.innerHTML = '⏳ AI 有点忙（限流），<b>' + sec + '</b> 秒后自动重试…';
+                                if (sec <= 0) { clearInterval(iv); doChatInner(); }
+                            }, 1000);
                             return;
                         }
                         wait.querySelector('.sa-chat-bubble').innerHTML = '⚠️ ' + escapeHtml(d.error || '出错了');
@@ -752,8 +803,10 @@
                 if (d.web) {
                     replyHtml = '🔗 已联网查看：<a href="' + escapeHtml(d.web.url) + '" target="_blank" rel="noopener">' + escapeHtml(d.web.title) + '</a><br>';
                 }
-                wait.querySelector('.sa-chat-bubble').innerHTML = replyHtml + escapeHtml(d.reply || '').replace(/\n/g, '<br>');
-                chat.scrollTop = chat.scrollHeight; /* 回复填充后自动滚到底部 */
+                var bubble = wait.querySelector('.sa-chat-bubble');
+                bubble.innerHTML = replyHtml + mdRender(d.reply || '');
+                bubble.classList.add('sa-typing');
+                setTimeout(function () { bubble.classList.remove('sa-typing'); }, 600);
                 messages.push({ role: 'assistant', content: d.reply || '' });
                 saveHistory();
                 /* 生成文章时提供复制按钮 */

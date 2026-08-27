@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Theme Name: Stellar
  * Author: You
  * Description: 星辰主题 —— 现代、简洁、功能全面的 Typecho 主题。毛玻璃导航、暗色模式、星辰配色、滚动动效、代码高亮、懒加载，开箱即用。
@@ -14,7 +14,7 @@
     --card-soft: #f8f9fd;
     --text: #1c2030;
     --text-2: #5b6272;
-    --text-3: #9aa1b1;
+    --text-3: #7a8194;
     --line: #e6e8f0;
     --accent: #5b5bd6;
     --accent-2: #8b5cf6;
@@ -24,9 +24,9 @@
     --ok: #30a46c;
     --radius: 16px;
     --radius-sm: 10px;
-    --shadow-sm: 0 1px 2px rgba(20, 24, 46, .04), 0 2px 8px rgba(20, 24, 46, .04);
-    --shadow-md: 0 4px 12px rgba(20, 24, 46, .08), 0 12px 32px rgba(20, 24, 46, .06);
-    --shadow-lg: 0 12px 40px rgba(20, 24, 46, .14);
+    --shadow-sm: 0 1px 3px rgba(20, 24, 46, .06), 0 4px 14px rgba(20, 24, 46, .07);
+    --shadow-md: 0 6px 20px rgba(20, 24, 46, .1), 0 16px 44px rgba(20, 24, 46, .09);
+    --shadow-lg: 0 16px 48px rgba(20, 24, 46, .2);
     --header-h: 64px;
     --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
     --font-mono: ui-monospace, SFMono-Regular, "JetBrains Mono", Consolas, "Courier New", monospace;
@@ -40,15 +40,15 @@
     --card-soft: #1d2230;
     --text: #e8eaf2;
     --text-2: #a6adc0;
-    --text-3: #6b7286;
+    --text-3: #7e86a0;
     --line: #262b3a;
     --accent: #8b8bf0;
     --accent-2: #a78bfa;
     --accent-grad: linear-gradient(135deg, #8b8bf0, #a78bfa);
     --accent-soft: rgba(139, 139, 240, .14);
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, .3);
-    --shadow-md: 0 4px 16px rgba(0, 0, 0, .35);
-    --shadow-lg: 0 12px 44px rgba(0, 0, 0, .5);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, .35), 0 4px 14px rgba(0, 0, 0, .3);
+    --shadow-md: 0 6px 20px rgba(0, 0, 0, .4), 0 16px 44px rgba(0, 0, 0, .35);
+    --shadow-lg: 0 16px 48px rgba(0, 0, 0, .55);
 }
 
 /* ============ 配色模板（后台「主题配色」选择） ============ */
@@ -180,7 +180,7 @@ p { margin: 0 0 1em; }
     border-bottom: 1px solid var(--line);
     transition: background .35s ease, border-color .35s ease, box-shadow .3s ease;
 }
-.site-header.scrolled { box-shadow: var(--shadow-sm); }
+.site-header.scrolled { box-shadow: var(--shadow-sm); backdrop-filter: blur(8px) saturate(1.3); -webkit-backdrop-filter: blur(8px) saturate(1.3); }
 .header-inner {
     width: min(var(--content-w), 100% - 40px); margin-inline: auto; height: var(--header-h);
     display: flex; align-items: center; gap: 24px;
@@ -301,6 +301,10 @@ p { margin: 0 0 1em; }
     text-align: center;
     position: relative;
     overflow: hidden;
+    /* 光晕氛围（前沿渐变光斑） */
+    background-image:
+        radial-gradient(420px 280px at 18% 12%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 70%),
+        radial-gradient(380px 260px at 85% 90%, color-mix(in srgb, var(--accent-2) 10%, transparent), transparent 70%);
 }
 .hero::before {
     content: ""; position: absolute; inset: 0; pointer-events: none;
@@ -317,17 +321,12 @@ p { margin: 0 0 1em; }
     box-shadow: 0 8px 28px color-mix(in srgb, var(--accent) 40%, transparent);
     border: 3px solid var(--card);
 }
-/* 头像旋转光环 */
+/* 头像旋转光环（纯 border + transform，避免 mask 每帧重绘） */
 .hero-avatar::before {
     content: ""; position: absolute; inset: -7px; border-radius: 50%;
-    padding: 2px;
-    background: conic-gradient(from 0deg, transparent 0%, var(--accent) 18%, var(--accent-2) 30%, transparent 45%, transparent 60%, var(--accent) 78%, transparent 95%);
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    mask-composite: exclude;
-    animation: heroRing 7s linear infinite;
-    opacity: .8;
+    border: 2px dashed color-mix(in srgb, var(--accent) 55%, transparent);
+    animation: heroRing 14s linear infinite;
+    opacity: .85;
 }
 @keyframes heroRing { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) {
@@ -376,7 +375,7 @@ p { margin: 0 0 1em; }
 .post-cover img { width: 100%; height: 100%; object-fit: cover; transition: transform .6s cubic-bezier(.22, .61, .36, 1); }
 .post-card:hover .post-cover img { transform: scale(1.04); }
 .post-card-body { padding: 24px 26px 22px; display: flex; flex-direction: column; gap: 12px; }
-.post-meta { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-3); flex-wrap: wrap; }
+.post-meta { display: flex; align-items: center; gap: 14px; font-size: 13px; color: var(--text-3); flex-wrap: wrap; }
 .post-meta time { color: var(--text-3); }
 .post-meta a { color: var(--text-3); }
 .post-meta a:hover { color: var(--accent); }
@@ -898,6 +897,9 @@ p { margin: 0 0 1em; }
 .friends-empty { color: var(--text-3); font-size: 14px; margin-top: 20px; }
 @media (max-width: 640px) {
     .friends-grid { grid-template-columns: minmax(0, 1fr); }
+    .post-card-body { padding: 16px 16px 15px; gap: 9px; }
+    .post-meta { gap: 10px; }
+    .hero { padding: 28px 18px 26px; }
 }
 
 /* ============ Hero 光晕动效 ============ */
