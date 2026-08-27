@@ -30,20 +30,6 @@ class Plugin implements PluginInterface
 
     public static function config(Form $form)
     {
-        $ui = new \Typecho\Widget\Helper\Form\Element\Select(
-            'sa_enable_ui',
-            ['1' => '启用', '0' => '停用'],
-            '1',
-            _t('后台美化'),
-            _t('停用后不再加载美化样式（侧边栏/暗色模式/编辑器 Markdown 工具），后台恢复 Typecho 原版外观')
-        );
-        $ai = new \Typecho\Widget\Helper\Form\Element\Select(
-            'sa_enable_ai',
-            ['1' => '启用', '0' => '停用'],
-            '1',
-            _t('AI 助手'),
-            _t('停用后 AI 对话/命令面板/润色全部关闭；可单独停用任一功能，互不影响（如换其他美化插件时只保留 AI）')
-        );
         $provider = new \Typecho\Widget\Helper\Form\Element\Select(
             'ai_provider',
             [
@@ -71,8 +57,6 @@ class Plugin implements PluginInterface
             . '<br><button type="button" class="btn btn-s" id="sa-detect-models">检测可用模型</button>'
             . '<div id="sa-model-list" style="margin-top:10px"></div>'
         );
-        $form->addInput($ui);
-        $form->addInput($ai);
         $form->addInput($provider);
         $form->addInput($key);
         $form->addInput($base);
@@ -85,25 +69,13 @@ class Plugin implements PluginInterface
 
     public static function render(string $header): string
     {
-        $cfg = \Typecho\Widget::widget('Widget_Options')->plugin('StellarAdmin');
-        $ui = ($cfg->sa_enable_ui ?? '1') !== '0';
-        $ai = ($cfg->sa_enable_ai ?? '1') !== '0';
         $base = \Typecho\Common::url('usr/plugins/StellarAdmin/assets',
             \Typecho\Widget::widget('Widget_Options')->siteUrl);
 
-        $html = $header;
-        if ($ui || $ai) {
-            /* 传给 stellar.js 的功能开关（美化 / AI 独立控制） */
-            $html .= '<script>window.__saFlags={ui:' . ($ui ? 'true' : 'false') . ',ai:' . ($ai ? 'true' : 'false') . '};</script>' . "\n";
-        }
-        if ($ui) {
-            $cssV = filemtime(__TYPECHO_ROOT_DIR__ . '/usr/plugins/StellarAdmin/assets/stellar.css');
-            $html .= '<link rel="stylesheet" href="' . $base . '/stellar.css?v=' . $cssV . '">' . "\n";
-        }
-        if ($ui || $ai) {
-            $jsV = filemtime(__TYPECHO_ROOT_DIR__ . '/usr/plugins/StellarAdmin/assets/stellar.js');
-            $html .= '<script src="' . $base . '/stellar.js?v=' . $jsV . '" defer></script>' . "\n";
-        }
-        return $html;
+        $cssV = filemtime(__TYPECHO_ROOT_DIR__ . '/usr/plugins/StellarAdmin/assets/stellar.css');
+        $jsV = filemtime(__TYPECHO_ROOT_DIR__ . '/usr/plugins/StellarAdmin/assets/stellar.js');
+        return $header
+            . '<link rel="stylesheet" href="' . $base . '/stellar.css?v=' . $cssV . '">' . "\n"
+            . '<script src="' . $base . '/stellar.js?v=' . $jsV . '" defer></script>' . "\n";
     }
 }

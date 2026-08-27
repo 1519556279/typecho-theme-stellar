@@ -2,7 +2,6 @@
 (function () {
     'use strict';
     var doc = document, root = doc.documentElement;
-    var saFlags = window.__saFlags || { ui: true, ai: true }; /* 插件配置开关：美化 / AI 助手 */
     var KEY_T = 'stellar-admin-theme', KEY_A = 'stellar-admin-accent', KEY_C = 'stellar-admin-collapsed';
     var ACCENTS = [
         ['default', '#5b5bd6'], ['blue', '#2563eb'], ['emerald', '#0d9488'],
@@ -515,13 +514,11 @@
         }
         var aiBtn = doc.getElementById('sa-ai-btn');
         if (aiBtn) {
-            if (!saFlags.ai) { aiBtn.hidden = true; }
-            else { aiBtn.addEventListener('click', function () { aiPolish('通用', aiBtn, 'AI 润色'); }); }
+            aiBtn.addEventListener('click', function () { aiPolish('通用', aiBtn, 'AI 润色'); });
         }
         var autoBtn = doc.getElementById('sa-auto-btn');
         if (autoBtn) {
-            if (!saFlags.ai) { autoBtn.hidden = true; }
-            else { autoBtn.addEventListener('click', function () { aiPolish('auto', autoBtn, '智能优化'); }); }
+            autoBtn.addEventListener('click', function () { aiPolish('auto', autoBtn, '智能优化'); });
         }
     }
 
@@ -807,6 +804,8 @@
                 bubble.innerHTML = replyHtml + mdRender(d.reply || '');
                 bubble.classList.add('sa-typing');
                 setTimeout(function () { bubble.classList.remove('sa-typing'); }, 600);
+                /* 回复后自动滚动到最新消息（微信式，rAF 确保布局更新后再滚） */
+                requestAnimationFrame(function () { chat.scrollTop = chat.scrollHeight; });
                 messages.push({ role: 'assistant', content: d.reply || '' });
                 saveHistory();
                 /* 生成文章时提供复制按钮 */
@@ -943,27 +942,23 @@
     /* ---------- 启动 ---------- */
     function init() {
         if (doc.querySelector('.typecho-login')) {
-            if (saFlags.ui) decorateLogin();
+            decorateLogin();
             return;
         }
-        if (saFlags.ui) {
-            setupSidebar();
-            bindCollapse();
-            bindUserMenu();
-            bindThemeButtons();
-            bindBatch();
-            bindHelp();
-        }
+        setupSidebar();
+        bindCollapse();
+        bindUserMenu();
+        bindThemeButtons();
+        bindBatch();
+        bindHelp();
         initPage();
     }
-    /* 页面级绑定（按插件开关分别加载美化 / AI 模块） */
+    /* 页面级绑定 */
     function initPage() {
-        if (saFlags.ui) bindEditorTools();
-        if (saFlags.ai) {
-            bindCmd();
-            bindAiConsole();
-            bindModelDetect();
-        }
+        bindEditorTools();
+        bindCmd();
+        bindAiConsole();
+        bindModelDetect();
     }
     if (doc.readyState === 'loading') {
         doc.addEventListener('DOMContentLoaded', init);
