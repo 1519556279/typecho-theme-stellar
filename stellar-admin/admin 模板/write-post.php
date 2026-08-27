@@ -55,14 +55,6 @@ $post = \Widget\Contents\Post\Edit::alloc()->prepare();
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>
                         <?php _e('Markdown 语法'); ?>
                     </button>
-                    <button type="button" class="sa-editor-btn" id="sa-ai-btn">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3Z"/></svg>
-                        <?php _e('AI 润色'); ?>
-                    </button>
-                    <button type="button" class="sa-editor-btn" id="sa-auto-btn" title="<?php _e('自动识别并修复标题层级、裸图片链接、列表与段落结构'); ?>">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="m7 8 3 3-3 3"/><path d="m10 8 3 3-3 3"/></svg>
-                        <?php _e('智能优化'); ?>
-                    </button>
                     <button type="button" class="sa-editor-btn" id="sa-undo-btn" hidden>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11"/></svg>
                         <?php _e('撤回'); ?>
@@ -71,7 +63,6 @@ $post = \Widget\Contents\Post\Edit::alloc()->prepare();
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5v0A5.5 5.5 0 0 0 9.5 20H13"/></svg>
                         <?php _e('重做'); ?>
                     </button>
-                    <span class="sa-editor-hint" id="sa-ai-status"></span>
                 </div>
                 <div class="sa-md-guide" id="sa-md-guide" hidden>
                     <p class="sa-md-tip"><em>💡 点击任意语法即可插入到光标位置（可再点「撤回」还原）</em></p>

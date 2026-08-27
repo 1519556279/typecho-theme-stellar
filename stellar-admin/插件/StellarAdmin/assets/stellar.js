@@ -2,7 +2,6 @@
 (function () {
     'use strict';
     var doc = document, root = doc.documentElement;
-    var saFlags = window.__saFlags || { ui: true, ai: true }; /* 插件配置开关：美化 / AI 助手 */
     var KEY_T = 'stellar-admin-theme', KEY_A = 'stellar-admin-accent', KEY_C = 'stellar-admin-collapsed';
     var ACCENTS = [
         ['default', '#5b5bd6'], ['blue', '#2563eb'], ['emerald', '#0d9488'],
@@ -94,7 +93,6 @@
     function updateDots() {
         var cur = root.getAttribute('data-accent');
         doc.querySelectorAll('.sa-accent').forEach(function (d) { d.setAttribute('data-on', d.getAttribute('data-a') === cur ? '1' : '0'); });
-    }
     function bindThemeButtons() {
         doc.querySelectorAll('.sa-theme-btn').forEach(function (btn) {
             btn.addEventListener('click', function (e) {
@@ -112,47 +110,8 @@
     }
 
     /* ---------- 侧边栏：图标 / accordion / 折叠 ---------- */
-    var NAV_ICONS = {
-        'write-post': 'edit', 'write-page': 'file-plus',
-        'manage-posts': 'file-text', 'manage-pages': 'files',
-        'manage-comments': 'message', 'manage-categories': 'folder',
-        'manage-tags': 'tag', 'manage-medias': 'image', 'manage-users': 'users',
-        'options-general': 'sliders', 'options-discussion': 'chat', 'options-reading': 'book',
-        'options-permalink': 'link', 'options-theme': 'palette', 'plugins': 'box',
-        'themes': 'palette', 'backup': 'archive', 'upgrade': 'refresh', 'welcome': 'sparkle',
-        'category': 'folder', 'user': 'user-plus', 'media': 'image'
-    };
-    var ICON_SVG = {
-        edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
-        'file-plus': '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M12 18v-6"/><path d="M9 15h6"/>',
-        'file-text': '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/>',
-        files: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v5h5"/><path d="M9 13h6"/><path d="M9 17h4"/>',
-        message: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
-        chat: '<path d="M8 10h8"/><path d="M8 14h5"/><path d="M21 12a8 8 0 0 1-8 8H6l-3 2v-5.3A8 8 0 1 1 21 12Z"/>',
-        folder: '<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>',
-        tag: '<path d="M12.6 2.6 20 10l-8 8-7.4-7.4a2 2 0 0 1-.6-1.4V4a2 2 0 0 1 2-2h5.2a2 2 0 0 1 1.4.6Z"/><circle cx="7" cy="7" r="1.5"/>',
-        image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/>',
-        users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
-        'user-plus': '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6"/><path d="M22 11h-6"/>',
-        sliders: '<line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>',
-        book: '<path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/>',
-        link: '<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>',
-        palette: '<circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.5-.66 1.5-1.5 0-.42-.17-.78-.44-1.05-.27-.27-.56-.6-.56-1.2 0-.93.66-1.5 1.5-1.5H16a6 6 0 0 0 6-6c0-4.5-4.22-8-10-8Z"/>',
-        archive: '<rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/>',
-        refresh: '<path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/>',
-        sparkle: '<path d="M12 3l1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3Z"/>',
-        box: '<path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>',
-        grid: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
-        layers: '<path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/>',
-        settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34h0a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55h0a1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87v0a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1Z"/>'
-    };
-    function makeIcon(name) {
-        var s = doc.createElement('span');
-        s.className = 'sa-nav-icon';
-        s.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'
-            + (ICON_SVG[name] || ICON_SVG.sparkle) + '</svg>';
-        return s;
-    }
+
+
     function setupSidebar() {
         var nav = doc.querySelector('.sa-nav');
         if (!nav) return;
@@ -211,19 +170,8 @@
     }
 
     /* ---------- 折叠 / 抽屉 ---------- */
-    function toggleCollapse(force) {
-        var app = doc.querySelector('.sa-app');
-        if (!app) return;
-        var open;
-        if (isDesktop()) {
-            open = force !== undefined ? force : !app.classList.contains('sa-collapsed');
-            app.classList.toggle('sa-collapsed', open);
-            try { localStorage.setItem(KEY_C, open ? '1' : '0'); } catch (e) {}
-        } else {
-            open = force !== undefined ? force : !app.classList.contains('sa-nav-open');
-            app.classList.toggle('sa-nav-open', open);
-        }
-    }
+
+
     function bindCollapse() {
         doc.querySelectorAll('.sa-sidebar-toggle, .sa-topbar-toggle').forEach(function (b) {
             b.addEventListener('click', function () { toggleCollapse(); });
@@ -241,6 +189,8 @@
     }
 
     /* ---------- 用户菜单 ---------- */
+
+
     function bindUserMenu() {
         var chip = doc.getElementById('sa-user-chip');
         var menu = doc.getElementById('sa-user-menu');
@@ -255,31 +205,8 @@
     }
 
     /* ---------- 批量操作 / 单行删除 / 全选 ---------- */
-    function getCheckedCids() {
-        var cids = [];
-        doc.querySelectorAll('form[name="manage_posts"] input[name="cid[]"]:checked').forEach(function (i) { cids.push(i.value); });
-        return cids;
-    }
-    function submitCids(url, cids, msg) {
-        if (!cids.length) {
-            toast('请先选择要操作的文章', 'error');
-            return;
-        }
-        if (msg && !confirm(msg)) return;
-        var f = doc.createElement('form');
-        f.method = 'post';
-        f.action = url;
-        f.style.display = 'none';
-        cids.forEach(function (cid) {
-            var i = doc.createElement('input');
-            i.type = 'hidden';
-            i.name = 'cid[]';
-            i.value = cid;
-            f.appendChild(i);
-        });
-        doc.body.appendChild(f);
-        f.submit();
-    }
+
+
     function bindBatch() {
         doc.querySelectorAll('.sa-batch-op').forEach(function (link) {
             link.addEventListener('click', function (e) {
@@ -302,6 +229,8 @@
     }
 
     /* ---------- Toast ---------- */
+
+
     function toast(msg, type) {
         var t = doc.createElement('div');
         t.className = 'message popup ' + (type || 'notice');
@@ -315,7 +244,10 @@
     }
 
     /* ---------- 模态框 ---------- */
+
+
     var modal = null;
+
     function getModal() {
         if (modal) return modal;
         modal = doc.createElement('div');
@@ -332,6 +264,8 @@
         doc.body.appendChild(modal);
         return modal;
     }
+
+
     function openModal(title, html) {
         var m = getModal();
         m.querySelector('#sa-modal-title').textContent = title;
@@ -339,6 +273,8 @@
         m.hidden = false;
         doc.body.style.overflow = 'hidden';
     }
+
+
     function closeModal() {
         if (!modal) return;
         modal.hidden = true;
@@ -346,6 +282,8 @@
     }
 
     /* ---------- 全局帮助（按页面） ---------- */
+
+
     var HELP = {
         'write-post.php': '<div class="sa-help-sec"><h4>✍️ 发布文章流程</h4><ol>' +
             '<li>填写<b>标题</b>（建议 10–30 字，含关键词）</li>' +
@@ -353,7 +291,6 @@
             '<li>右侧面板设置<b>分类 / 标签</b>，标签用逗号分隔多个</li>' +
             '<li>插入 <code>&lt;!--more--&gt;</code> 标记可控制首页摘要截断位置</li>' +
             '<li>点「预览文章」检查效果 →「保存草稿」或「发布文章」</li></ol></div>' +
-            '<div class="sa-help-sec"><h4>🤖 AI 润色</h4><p>选中正文片段或直接点「AI 润色」，AI 会优化表达并保持 Markdown 结构。需先在 插件 → StellarAdmin → 设置 中配置 API Key。</p></div>' +
             '<div class="sa-help-sec"><h4>💡 提示</h4><p>正文以一级标题开头更利于阅读；段落之间空一行；首次发布建议先用「保存草稿」。</p></div>',
         'manage-posts.php': '<div class="sa-help-sec"><h4>📋 文章管理</h4><ol>' +
             '<li><b>筛选</b>：顶部标签切换 可用/待审核/草稿，右侧可搜索关键字、按分类筛选</li>' +
@@ -377,9 +314,10 @@
         'default': '<div class="sa-help-sec"><h4>✨ Stellar Admin 帮助</h4><ul>' +
             '<li>左侧<b>侧边栏</b>：点击折叠按钮可收起为图标栏</li>' +
             '<li>右上角<b>主题按钮</b>：切换暗色模式与 6 套配色</li>' +
-            '<li><b>命令面板</b>（&lt;/&gt; 按钮）：用自然语言发布文章、查看统计、修改站点信息，如「发布一篇标题为你好世界的文章」</li>' +
             '<li>写文章时点「Markdown 语法」查看符号规则</li></ul></div>'
     };
+
+
     function bindHelp() {
         var btn = doc.getElementById('sa-help-btn');
         if (!btn) return;
@@ -390,14 +328,9 @@
         });
     }
 
-    /* ---------- 编辑器工具（Markdown 引导插入 / AI 润色 / 智能优化 / 撤回重做） ---------- */
-    function aiUrl() {
-        return new URL('../../usr/plugins/StellarAdmin/ai.php', location.href).href;
-    }    function escapeHtml(s) {
-        return String(s == null ? '' : s)
-            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-    }
+    /* ---------- 编辑器工具（Markdown 引导插入 / 撤回重做） ---------- */
+
+
     function bindEditorTools() {
         var mdToggle = doc.getElementById('sa-md-toggle');
         var guide = doc.getElementById('sa-md-guide');
@@ -481,115 +414,13 @@
             });
         }
 
-        /* AI 润色 / 智能优化 共用逻辑 */
-        function aiPolish(mode, btn, label) {
-            var ta = doc.getElementById('text');
-            if (!ta) return;
-            var sel = ta.value.substring(ta.selectionStart, ta.selectionEnd);
-            var text = sel.trim() || ta.value.trim();
-            if (!text) { toast('编辑器里还没有内容', 'error'); return; }
-            btn.classList.add('sa-busy');
-            var status = doc.getElementById('sa-ai-status');
-            if (status) status.textContent = label + '中，请稍候…';
-            aiFetch({ action: 'polish', text: text, mode: mode }).then(function (d) {
-                btn.classList.remove('sa-busy');
-                if (!d.ok) { if (status) status.textContent = ''; toast(d.error || '处理失败', 'error'); return; }
-                if (status) status.textContent = '';
-                if (confirm(label + '完成，是否替换当前内容？')) {
-                    var start = ta.selectionStart, end = ta.selectionEnd;
-                    pushUndo(ta);
-                    if (sel.trim()) {
-                        ta.value = ta.value.substring(0, start) + d.text + ta.value.substring(end);
-                        ta.setSelectionRange(start, start + d.text.length);
-                    } else {
-                        ta.value = d.text;
-                    }
-                    ta.dispatchEvent(new Event('input'));
-                    toast(label + '完成 ✓（可撤回/重做）', 'success');
-                }
-            }).catch(function (e) {
-                btn.classList.remove('sa-busy');
-                if (status) status.textContent = '';
-                toast(e && e.message ? e.message : '网络请求失败', 'error');
-            });
-        }
-        var aiBtn = doc.getElementById('sa-ai-btn');
-        if (aiBtn) {
-            if (!saFlags.ai) { aiBtn.hidden = true; }
-            else { aiBtn.addEventListener('click', function () { aiPolish('通用', aiBtn, 'AI 润色'); }); }
-        }
-        var autoBtn = doc.getElementById('sa-auto-btn');
-        if (autoBtn) {
-            if (!saFlags.ai) { autoBtn.hidden = true; }
-            else { autoBtn.addEventListener('click', function () { aiPolish('auto', autoBtn, '智能优化'); }); }
+
         }
     }
 
     /* ---------- 命令面板（宝塔式 API 调用） ---------- */
-    function bindCmd() {
-        var btn = doc.getElementById('sa-cmd-btn');
-        if (!btn || btn.dataset.saBound) return;
-        btn.dataset.saBound = '1';
-        btn.addEventListener('click', function () {
-            var html =
-                '<p class="sa-cmd-desc">用自然语言下达指令，AI 会解析并执行（如发布文章、查看统计、修改站点信息）。</p>' +
-                '<div class="sa-cmd-examples">' +
-                '<button type="button" class="sa-cmd-chip">发布一篇标题为「你好世界」的文章，内容写一段自我介绍</button>' +
-                '<button type="button" class="sa-cmd-chip">查看最近的 5 篇文章</button>' +
-                '<button type="button" class="sa-cmd-chip">查看站点统计</button>' +
-                '<button type="button" class="sa-cmd-chip">把站点标题改为「我的博客」</button>' +
-                '</div>' +
-                '<textarea id="sa-cmd-input" rows="3" placeholder="例如：发布一篇关于 Typecho 的文章，内容用 Markdown 写三段…"></textarea>' +
-                '<div class="sa-cmd-actions"><button type="button" class="btn btn-primary" id="sa-cmd-send">执行</button></div>' +
-                '<div class="sa-cmd-result" id="sa-cmd-result"></div>';
-            openModal('命令面板', html);
-            var input = doc.getElementById('sa-cmd-input');
-            var send = doc.getElementById('sa-cmd-send');
-            var result = doc.getElementById('sa-cmd-result');
-            function run() {
-                var cmd = input.value.trim();
-                if (!cmd) { result.innerHTML = '<p class="sa-cmd-err">请输入指令</p>'; return; }
-                send.disabled = true;
-                send.textContent = '执行中…';
-                result.innerHTML = '<p class="sa-cmd-wait">AI 解析中，请稍候…</p>';
-                fetch(aiUrl(), {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'command', command: cmd })
-                }).then(function (r) { return r.json(); }).then(function (d) {
-                    send.disabled = false;
-                    send.textContent = '执行';
-                    if (!d.ok) { result.innerHTML = '<p class="sa-cmd-err">' + escapeHtml(d.error || '执行失败') + '</p>'; return; }
-                    if (d.note) { result.innerHTML = '<p class="sa-cmd-note">' + escapeHtml(d.note) + '</p>'; return; }
-                    var html = '';
-                    (d.results || []).forEach(function (r) {
-                        html += '<div class="sa-cmd-item ' + (r.ok ? 'ok' : 'err') + '">' +
-                            '<span class="sa-cmd-icon">' + (r.ok ? '✓' : '✗') + '</span>' +
-                            '<div><div class="sa-cmd-title">' + escapeHtml(r.action || '') + '</div>' +
-                            '<div class="sa-cmd-detail">' + escapeHtml(r.detail || '') + '</div></div></div>';
-                        if (r.list) {
-                            html += '<ul class="sa-cmd-list">' + r.list.map(function (p) {
-                                return '<li><b>#' + escapeHtml(p.cid) + '</b> ' + escapeHtml(p.title) + ' <span class="sa-cmd-st">' + escapeHtml(p.status) + '</span> ' + escapeHtml(p.created) + '</li>';
-                            }).join('') + '</ul>';
-                        }
-                    });
-                    result.innerHTML = html || '<p class="sa-cmd-note">没有可执行的操作</p>';
-                }).catch(function (e) {
-                    send.disabled = false;
-                    send.textContent = '执行';
-                    result.innerHTML = '<p class="sa-cmd-err">' + escapeHtml(e && e.message ? e.message : '网络请求失败') + '</p>';
-                });
-            }
-            send.addEventListener('click', run);
-            input.addEventListener('keydown', function (e) { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) run(); });
-            var body = doc.getElementById('sa-modal-body');
-            (body ? body.querySelectorAll('.sa-cmd-chip') : []).forEach(function (c) {
-                c.addEventListener('click', function () { input.value = c.textContent; run(); });
-            });
-        });
-    }
 
-    /* ---------- 登录页装饰 ---------- */
+
     function decorateLogin() {
         try { if (sessionStorage.getItem('sa-login-anim')) return; sessionStorage.setItem('sa-login-anim', '1'); } catch (e) {}
         if (!doc.querySelector('.typecho-login')) return;
@@ -618,352 +449,21 @@
         doc.body.appendChild(frag);
     }
 
-    /* ---------- 独立 AI 页面（ai-console.php） ---------- */
-    function aiFetch(body, timeoutMs) {
-        var ctrl = new AbortController();
-        var timer = setTimeout(function () { ctrl.abort(); }, timeoutMs || 90000);
-        return fetch(aiUrl(), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body),
-            signal: ctrl.signal
-        }).then(function (r) { clearTimeout(timer); return r.json(); })
-          .catch(function (e) {
-              clearTimeout(timer);
-              if (e && e.name === 'AbortError') throw new Error('请求超时，请重试');
-              throw e;
-          });
-    }
-    function bindAiConsole() {
-        if (!/ai-console\.php/.test(location.pathname)) return;
-        /* 当前页高亮侧边栏入口 */
-        var entry = doc.querySelector('.sa-ai-entry');
-        if (entry) entry.classList.add('sa-current');
 
-        var status = doc.getElementById('sa-ai-status');
-        /* 连接状态 */
-        function ping() {
-            if (status) status.textContent = '检查连接中…';
-            aiFetch({ action: 'ping' }, 15000).then(function (d) {
-                if (status) status.textContent = d.ok ? '已连接：' + (d.provider || '') + ' / ' + (d.model || '') : '未配置：' + (d.error || '');
-            }).catch(function () {
-                if (status) status.textContent = '连接失败';
-            });
-        }
-        var testBtn = doc.getElementById('sa-ai-test');
-        if (testBtn) testBtn.addEventListener('click', ping);
-        ping();
-
-        /* 对话 */
-        var chat = doc.getElementById('sa-chat');
-        var chatText = doc.getElementById('sa-chat-text');
-        var chatSend = doc.getElementById('sa-chat-send');
-        /* 轻量 Markdown 渲染（标题/粗体/斜体/行内代码/代码块/引用/列表/分隔线） */
-        function mdRender(src) {
-            var s = escapeHtml(String(src || ''));
-            var blocks = [];
-            s = s.replace(/```([\s\S]*?)```/g, function (_, c) {
-                blocks.push('<pre><code>' + c + '</code></pre>');
-                return '\u0000' + (blocks.length - 1) + '\u0000';
-            });
-            s = s.replace(/`([^`\n]+)`/g, '<code>$1</code>');
-            s = s.replace(/^### (.*)$/gm, '<h3>$1</h3>');
-            s = s.replace(/^## (.*)$/gm, '<h2>$1</h2>');
-            s = s.replace(/^# (.*)$/gm, '<h1>$1</h1>');
-            s = s.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
-            s = s.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
-            s = s.replace(/^&gt; (.*)$/gm, '<blockquote>$1</blockquote>');
-            s = s.replace(/((?:^[-*] .*(?:\n|$))+)/gm, function (m) {
-                return '<ul>' + m.trim().split('\n').map(function (l) {
-                    return '<li>' + l.replace(/^[-*] /, '') + '</li>';
-                }).join('') + '</ul>';
-            });
-            s = s.replace(/^---+$/gm, '<hr>');
-            s = s.replace(/\u0000(\d+)\u0000/g, function (_, i) { return blocks[+i]; });
-            s = s.replace(/\n/g, '<br>');
-            return '<div class="sa-md">' + s + '</div>';
-        }
-        /* 对话历史：localStorage 持久化，超上限自动删最旧 */
-        var HISTORY_KEY = 'sa-ai-history';
-        var HISTORY_MAX = 40;
-        function loadHistory() {
-            try {
-                var h = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
-                return Array.isArray(h) ? h : [];
-            } catch (e) { return []; }
-        }
-        function saveHistory() {
-            try {
-                localStorage.setItem(HISTORY_KEY, JSON.stringify(messages.slice(-HISTORY_MAX)));
-            } catch (e) {}
-        }
-        var messages = loadHistory();
-        /* 渲染历史对话（只显示最近 10 条，可展开更早） */
-        var HISTORY_SHOW = 10;
-        var showAll = false;
-        function renderHistory() {
-            chat.innerHTML = '';
-            if (messages.length > HISTORY_SHOW && !showAll) {
-                var moreBtn = doc.createElement('button');
-                moreBtn.type = 'button';
-                moreBtn.className = 'btn btn-s sa-copy-btn';
-                moreBtn.style.alignSelf = 'center';
-                moreBtn.textContent = '↑ 查看更早的对话（' + (messages.length - HISTORY_SHOW) + ' 条）';
-                moreBtn.addEventListener('click', function () {
-                    showAll = true;
-                    renderHistory();
-                    chat.scrollTop = chat.scrollHeight;
-                });
-                chat.appendChild(moreBtn);
-            }
-            var list = showAll ? messages : messages.slice(-HISTORY_SHOW);
-            list.forEach(function (m) {
-                if (m && m.role === 'user') {
-                    addMsg('user', String(m.content));
-                } else if (m && m.role === 'assistant') {
-                    addMsg('bot', String(m.content));
-                }
-            });
-            if (chat) chat.scrollTop = chat.scrollHeight;
-        }
-        renderHistory();
-        function addMsg(role, text, raw) {
-            var div = doc.createElement('div');
-            div.className = 'sa-chat-msg ' + (role === 'user' ? 'me' : 'bot');
-            div.innerHTML = role === 'user'
-                ? '<div class="sa-chat-bubble me">' + escapeHtml(text) + '</div>'
-                : '<span class="sa-chat-avatar">✦</span><div class="sa-chat-bubble">' + (raw ? text : mdRender(text)) + '</div>';
-            chat.appendChild(div);
-            chat.scrollTop = chat.scrollHeight;
-            return div;
-        }
-        function sendChat() {
-            var text = chatText.value.trim();
-            if (!text) return;
-            addMsg('user', text);
-            messages.push({ role: 'user', content: text });
-            saveHistory();
-            chatText.value = '';
-            doChat(messages[messages.length - 1].content, null);
-        }
-        function doChat(userText, retryWait) {
-            if (retryWait) retryWait.remove();
-            var wait = addMsg('bot', '<span class="sa-dots"><span></span><span></span><span></span></span>', true);
-            /* 限流自动重试（免费模型偶发 429）：最多自动重试 2 次，间隔 10 秒（带倒计时） */
-            var rateLimitRetries = 0;
-            function doChatInner() {
-                /* 统一走 chat：AI 自主判断——分析回复或执行操作（结果同样在此展示） */
-                aiFetch({ action: 'chat', messages: messages }).then(function (d) {
-                    if (!d.ok) {
-                        if (d.error && /限流|繁忙/.test(d.error) && rateLimitRetries < 2) {
-                            rateLimitRetries++;
-                            var sec = 10, bubble = wait.querySelector('.sa-chat-bubble');
-                            bubble.innerHTML = '⏳ AI 有点忙（限流），<b>' + sec + '</b> 秒后自动重试…';
-                            var iv = setInterval(function () {
-                                sec--;
-                                bubble.innerHTML = '⏳ AI 有点忙（限流），<b>' + sec + '</b> 秒后自动重试…';
-                                if (sec <= 0) { clearInterval(iv); doChatInner(); }
-                            }, 1000);
-                            return;
-                        }
-                        wait.querySelector('.sa-chat-bubble').innerHTML = '⚠️ ' + escapeHtml(d.error || '出错了');
-                        addRetry(wait, userText);
-                        return;
-                    }
-                /* 执行操作结果（后端执行后返回 results） */
-                var results = d && d.results;
-                if (results && results.length) {
-                    var html = results.map(function (r) {
-                        var icon = r.ok ? '✅' : '⚠️';
-                        var extra = r.list ? '<ul class="sa-cmd-list">' + r.list.map(function (p) {
-                            return '<li><b>#' + escapeHtml(p.cid) + '</b> ' + escapeHtml(p.title) + ' <span class="sa-cmd-st">' + escapeHtml(p.status) + '</span></li>';
-                        }).join('') + '</ul>' : '';
-                        if (r.content) {
-                            extra += '<div class="sa-cmd-content">' + escapeHtml(String(r.content).slice(0, 300)) + '</div>';
-                        }
-                        return '<div class="sa-cmd-item">' + icon + ' ' + escapeHtml(r.action || '') + '：' + escapeHtml(r.detail || '') + '</div>' + extra;
-                    }).join('');
-                    wait.querySelector('.sa-chat-bubble').innerHTML = html;
-                    chat.scrollTop = chat.scrollHeight; /* 结果填充后自动滚到底部 */
-                    messages.push({ role: 'assistant', content: results.map(function (r) { return r.detail || ''; }).join('\n') });
-                    saveHistory();
-                    var okCount = results.filter(function (r) { return r.ok; }).length;
-                    var failCount = results.length - okCount;
-                    if (failCount === 0) {
-                        toast('✅ 已完成：' + (results[0] && results[0].detail || '操作成功'), 'success');
-                    } else if (okCount > 0) {
-                        toast('✅ ' + okCount + ' 项成功，⚠️ ' + failCount + ' 项失败', 'error');
-                    } else {
-                        toast('⚠️ 操作失败：' + (results[0] && results[0].detail || '未知原因'), 'error');
-                    }
-                    return;
-                }
-                /* 正常分析/聊天回复 */
-                var replyHtml = '';
-                if (d.web) {
-                    replyHtml = '🔗 已联网查看：<a href="' + escapeHtml(d.web.url) + '" target="_blank" rel="noopener">' + escapeHtml(d.web.title) + '</a><br>';
-                }
-                var bubble = wait.querySelector('.sa-chat-bubble');
-                bubble.innerHTML = replyHtml + mdRender(d.reply || '');
-                bubble.classList.add('sa-typing');
-                setTimeout(function () { bubble.classList.remove('sa-typing'); }, 600);
-                messages.push({ role: 'assistant', content: d.reply || '' });
-                saveHistory();
-                /* 生成文章时提供复制按钮 */
-                if (d.reply && /^# /.test(d.reply.trim())) {
-                    var copyBtn = doc.createElement('button');
-                    copyBtn.type = 'button';
-                    copyBtn.className = 'btn btn-s sa-copy-btn';
-                    copyBtn.textContent = '复制全文';
-                    copyBtn.addEventListener('click', function () {
-                        if (navigator.clipboard) {
-                            navigator.clipboard.writeText(d.reply).then(function () { toast('已复制 ✓', 'success'); });
-                        } else {
-                            var ta = doc.createElement('textarea');
-                            ta.value = d.reply;
-                            doc.body.appendChild(ta);
-                            ta.select();
-                            doc.execCommand('copy');
-                            ta.remove();
-                            toast('已复制 ✓', 'success');
-                        }
-                    });
-                    wait.querySelector('.sa-chat-bubble').appendChild(copyBtn);
-                }
-            }).catch(function (e) {
-                wait.querySelector('.sa-chat-bubble').innerHTML = '⚠️ ' + escapeHtml(e && e.message ? e.message : '网络请求失败');
-                addRetry(wait, userText);
-            });
-            }
-            doChatInner();
-        }
-        function addRetry(wait, userText) {
-            var retry = doc.createElement('button');
-            retry.type = 'button';
-            retry.className = 'btn btn-s sa-copy-btn';
-            retry.textContent = '重试';
-            retry.addEventListener('click', function () { doChat(userText, wait); });
-            wait.querySelector('.sa-chat-bubble').appendChild(retry);
-        }
-        if (chatSend && chatText) {
-            chatSend.addEventListener('click', sendChat);
-            chatText.addEventListener('keydown', function (e) {
-                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) sendChat();
-            });
-            doc.querySelectorAll('.sa-chat-tools .sa-cmd-chip').forEach(function (c) {
-                c.addEventListener('click', function () {
-                    chatText.value = c.getAttribute('data-prompt') + '\n\n';
-                    chatText.focus();
-                });
-            });
-        }
-
-        /* 命令执行（右侧卡片） */
-        var cmdInput = doc.getElementById('sa-cmd-input');
-        var cmdSend = doc.getElementById('sa-cmd-send');
-        var cmdResult = doc.getElementById('sa-cmd-result');
-        if (cmdSend && cmdInput) {
-            function runCmd() {
-                var cmd = cmdInput.value.trim();
-                if (!cmd) { cmdResult.innerHTML = '<p class="sa-cmd-err">请输入指令</p>'; return; }
-                cmdSend.disabled = true;
-                cmdSend.textContent = '执行中…';
-                cmdResult.innerHTML = '<p class="sa-cmd-wait">AI 解析中…</p>';
-                aiFetch({ action: 'command', command: cmd }).then(function (d) {
-                    cmdSend.disabled = false;
-                    cmdSend.textContent = '执行';
-                    if (!d.ok) { cmdResult.innerHTML = '<p class="sa-cmd-err">' + escapeHtml(d.error || '失败') + '</p>'; return; }
-                    if (d.note) { cmdResult.innerHTML = '<p class="sa-cmd-note">' + escapeHtml(d.note) + '</p>'; return; }
-                    var html = '';
-                    (d.results || []).forEach(function (r) {
-                        html += '<div class="sa-cmd-item ' + (r.ok ? 'ok' : 'err') + '"><span class="sa-cmd-icon">' + (r.ok ? '✓' : '✗') + '</span>' +
-                            '<div><div class="sa-cmd-title">' + escapeHtml(r.action || '') + '</div>' +
-                            '<div class="sa-cmd-detail">' + escapeHtml(r.detail || '') + '</div></div></div>';
-                        if (r.list) {
-                            html += '<ul class="sa-cmd-list">' + r.list.map(function (p) {
-                                return '<li><b>#' + p.cid + '</b> ' + escapeHtml(p.title) + ' <span class="sa-cmd-st">' + escapeHtml(p.status) + '</span> ' + escapeHtml(p.created) + '</li>';
-                            }).join('') + '</ul>';
-                        }
-                    });
-                    cmdResult.innerHTML = html;
-                }).catch(function () {
-                    cmdSend.disabled = false;
-                    cmdSend.textContent = '执行';
-                    cmdResult.innerHTML = '<p class="sa-cmd-err">网络请求失败</p>';
-                });
-            }
-            cmdSend.addEventListener('click', runCmd);
-        }
-    }
-
-    /* ---------- 插件设置页：检测可用模型 ---------- */
-    function bindModelDetect() {
-        var btn = doc.getElementById('sa-detect-models');
-        if (!btn) return;
-        var box = doc.getElementById('sa-model-list');
-        btn.addEventListener('click', function () {
-            btn.disabled = true;
-            btn.textContent = '检测中…';
-            box.innerHTML = '<span class="sa-cmd-wait">正在获取模型列表…</span>';
-            aiFetch({ action: 'models' }, 30000).then(function (d) {
-                btn.disabled = false;
-                btn.textContent = '重新检测';
-                if (!d.ok) {
-                    box.innerHTML = '<span class="sa-cmd-err">⚠️ ' + escapeHtml(d.error || '检测失败') + '</span>';
-                    return;
-                }
-                if (!d.models || !d.models.length) {
-                    box.innerHTML = '<span class="sa-cmd-err">该服务商未返回可用模型</span>';
-                    return;
-                }
-                box.innerHTML = '';
-                d.models.forEach(function (m) {
-                    var chip = doc.createElement('button');
-                    chip.type = 'button';
-                    chip.className = 'sa-model-chip' + (m === d.default ? ' sa-default' : '');
-                    chip.textContent = m === d.default ? m + '（默认免费）' : m;
-                    chip.title = m === d.default ? '当前服务商默认免费模型，点击填入' : '点击填入模型名';
-                    chip.addEventListener('click', function () {
-                        var input = doc.querySelector('input[name="ai_model"]');
-                        if (input) input.value = m;
-                        box.querySelectorAll('.sa-model-chip').forEach(function (c) { c.classList.remove('sa-active'); });
-                        chip.classList.add('sa-active');
-                        toast('已填入：' + m + '，记得点「保存设置」', 'success');
-                    });
-                    box.appendChild(chip);
-                });
-            }).catch(function (e) {
-                btn.disabled = false;
-                btn.textContent = '重新检测';
-                box.innerHTML = '<span class="sa-cmd-err">⚠️ ' + escapeHtml(e && e.message ? e.message : '检测失败') + '</span>';
-            });
-        });
-    }
-
+    /* ---------- 启动 ---------- */
     /* ---------- 启动 ---------- */
     function init() {
         if (doc.querySelector('.typecho-login')) {
-            if (saFlags.ui) decorateLogin();
+            decorateLogin();
             return;
         }
-        if (saFlags.ui) {
-            setupSidebar();
-            bindCollapse();
-            bindUserMenu();
-            bindThemeButtons();
-            bindBatch();
-            bindHelp();
-        }
-        initPage();
-    }
-    /* 页面级绑定（按插件开关分别加载美化 / AI 模块） */
-    function initPage() {
-        if (saFlags.ui) bindEditorTools();
-        if (saFlags.ai) {
-            bindCmd();
-            bindAiConsole();
-            bindModelDetect();
-        }
+        setupSidebar();
+        bindCollapse();
+        bindUserMenu();
+        bindThemeButtons();
+        bindBatch();
+        bindHelp();
+        bindEditorTools();
     }
     if (doc.readyState === 'loading') {
         doc.addEventListener('DOMContentLoaded', init);
