@@ -1,9 +1,12 @@
 /**
- * Theme Name: Stellar
- * Author: You
- * Description: 星辰主题 —— 现代、简洁、功能全面的 Typecho 主题。毛玻璃导航、暗色模式、星辰配色、滚动动效、代码高亮、懒加载，开箱即用。
- * Version: 1.1.0
- * Tags: 简约, 响应式, 暗色模式, 双栏, 星辰
+ * 咔咔主题 —— 现代、简洁、功能全面的 Typecho 博客主题。
+ * 毛玻璃导航、暗色模式、星辰渐变配色、滚动动效、代码高亮、图片懒加载、
+ * 8 种社交渠道、文章阅读时间统计、评论头像本地缓存，开箱即用。
+ *
+ * @package 咔咔
+ * @author 咔咔
+ * @link https://lioip.cn
+ * @version 1.2.0
  */
 
 /* ============ 设计变量 ============ */
@@ -999,3 +1002,22 @@ body { position: relative; }
 /* 内容区防溢出保险：长单词/URL 自动换行，杜绝右侧突出 */
 .post-content { overflow-wrap: break-word; word-break: break-word; }
 .post-content pre { white-space: pre; overflow-x: auto; }
+/* 评论邮箱悬停提示 */
+a[data-mail] { position: relative; }
+a[data-mail]:hover::after {
+    content: attr(data-mail);
+    position: absolute; left: 50%; bottom: calc(100% + 8px); transform: translateX(-50%);
+    background: #1c2030; color: #fff; font-size: 12px; line-height: 1.4;
+    padding: 4px 10px; border-radius: 6px; white-space: nowrap; z-index: 20;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, .2); pointer-events: none;
+    animation: mail-tip-in .18s ease both;
+}
+a[data-mail]:hover::before {
+    content: ''; position: absolute; left: 50%; bottom: calc(100% + 3px); transform: translateX(-50%);
+    border: 5px solid transparent; border-top-color: #1c2030; z-index: 20; pointer-events: none;
+}
+@keyframes mail-tip-in { from { opacity: 0; transform: translateX(-50%) translateY(4px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+
+/* 联系方式 tooltip：按钮靠近视口顶部时显示在下方 */
+a[data-mail].mail-tip-down:hover::after { top: calc(100% + 8px); bottom: auto; }
+a[data-mail].mail-tip-down:hover::before { top: calc(100% + 2px); bottom: auto; border-top-color: transparent; border-bottom-color: #1c2030; }

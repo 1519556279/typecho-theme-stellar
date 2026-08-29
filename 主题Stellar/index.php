@@ -1,4 +1,16 @@
 <?php if (!defined('__TYPECHO_ROOT_DIR__')) exit; ?>
+<?php
+/**
+ * 咔咔主题 —— 现代、简洁、功能全面的 Typecho 博客主题。
+ * 毛玻璃导航、暗色模式、星辰渐变配色、滚动动效、代码高亮、图片懒加载、
+ * 8 种社交渠道、文章阅读时间统计、评论头像本地缓存，开箱即用。
+ *
+ * @package 咔咔
+ * @author 咔咔
+ * @link https://lioip.cn
+ * @version 1.2.0
+ */
+?>
 <?php $this->need('header.php'); ?>
 
 <!-- Hero 区域 -->
