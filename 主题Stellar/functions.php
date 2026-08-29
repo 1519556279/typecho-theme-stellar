@@ -81,6 +81,18 @@ function themeConfig($form)
     $email = new Typecho_Widget_Helper_Form_Element_Text('socialEmail', NULL, '', _t('邮箱地址'), _t('留空则不显示'));
     $form->addInput($email);
 
+    $qq = new Typecho_Widget_Helper_Form_Element_Text('socialQQ', NULL, '', _t('QQ 号'), _t('留空则不显示，点击跳转 QQ 临时会话'));
+    $form->addInput($qq);
+
+    $wechat = new Typecho_Widget_Helper_Form_Element_Text('socialWechat', NULL, '', _t('微信号'), _t('留空则不显示，点击复制微信号'));
+    $form->addInput($wechat);
+
+    $telegram = new Typecho_Widget_Helper_Form_Element_Text('socialTelegram', NULL, '', _t('Telegram 用户名'), _t('留空则不显示，填用户名如 kaka，自动拼接 t.me/kaka'));
+    $form->addInput($telegram);
+
+    $bili = new Typecho_Widget_Helper_Form_Element_Text('socialBili', NULL, '', _t('哔哩哔哩主页链接'), _t('留空则不显示'));
+    $form->addInput($bili);
+
     $showSidebar = new Typecho_Widget_Helper_Form_Element_Select('showSidebar', array('1' => '显示', '0' => '隐藏'), '1', _t('侧边栏'), _t('桌面端右侧边栏开关'));
     $form->addInput($showSidebar);
 }
