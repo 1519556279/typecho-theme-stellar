@@ -55,11 +55,13 @@
         var mail = decodeURIComponent(links[i].getAttribute('href').slice(7) || '');
         setTip(links[i], mail);
     }
-    /* 侧边栏社交链接（GitHub / 微博 / X 等非邮箱）：显示主页地址；微信号点击复制 */
+    /* 侧边栏社交链接：优先用 data-tip（sidebar 渲染的友好文案），否则显示主页地址；微信号点击复制 */
     var socials = document.querySelectorAll('.widget-social a');
     for (var j = 0; j < socials.length; j++) {
         var href = socials[j].getAttribute('href') || '';
         if (href.indexOf('mailto:') === 0) continue; /* 上面已处理 */
+        var tip = socials[j].getAttribute('data-tip');
+        setTip(socials[j], tip || href.replace(/^https?:\/\//, ''));
         var copyVal = socials[j].getAttribute('data-copy');
         if (copyVal) {
             socials[j].addEventListener('click', function (e) {
@@ -77,10 +79,8 @@
                     document.body.removeChild(ta);
                 }
             });
-            setTip(socials[j], copyVal);
             continue;
         }
-        setTip(socials[j], href.replace(/^https?:\/\//, ''));
     }
 })();
 </script>
