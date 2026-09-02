@@ -6,10 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="generator" content="Typecho">
     <meta name="renderer" content="webkit">
-    <title><?php $this->archiveTitle(array('category' => _t('分类 %s'), 'search' => _t('搜索 %s'), 'tag' => _t('标签 %s'), 'author' => _t('%s 的文章')), '', ' - '); ?>Stellar · <?php $this->options->title(); ?></title>
+    <title><?php $this->archiveTitle(array('category' => _t('分类 %s'), 'search' => _t('搜索 %s'), 'tag' => _t('标签 %s'), 'author' => _t('%s 的文章')), '', ' - '); ?><?php $this->options->title(); ?></title>
     <meta name="description" content="<?php $this->options->description(); ?>">
     <meta property="og:site_name" content="<?php $this->options->title(); ?>">
-    <meta property="og:title" content="<?php $this->archiveTitle(array('category' => _t('分类 %s'), 'search' => _t('搜索 %s'), 'tag' => _t('标签 %s'), 'author' => _t('%s 的文章')), '', ' - '); ?>Stellar · <?php $this->options->title(); ?>">
+    <meta property="og:title" content="<?php $this->archiveTitle(array('category' => _t('分类 %s'), 'search' => _t('搜索 %s'), 'tag' => _t('标签 %s'), 'author' => _t('%s 的文章')), '', ' - '); ?><?php $this->options->title(); ?>">
     <meta property="og:type" content="<?php if ($this->is('post')) echo 'article'; elseif ($this->is('page')) echo 'website'; else echo 'website'; ?>">
     <meta property="og:url" content="<?php echo $this->request->getRequestUrl(); ?>">
     <meta property="og:description" content="<?php $this->options->description(); ?>">
