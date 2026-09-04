@@ -13,10 +13,20 @@
     <meta property="og:type" content="<?php if ($this->is('post')) echo 'article'; elseif ($this->is('page')) echo 'website'; else echo 'website'; ?>">
     <meta property="og:url" content="<?php echo $this->request->getRequestUrl(); ?>">
     <meta property="og:description" content="<?php $this->options->description(); ?>">
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%235b5bd6'/%3E%3Cstop offset='1' stop-color='%238b5cf6'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='24' height='24' rx='5.5' fill='url(%23g)'/%3E%3Cg transform='translate(12 12) scale(.72) translate(-12 -12)'%3E%3Cpath d='M12 2l2.4 4.9L20 8l-3.6 3.9L17.5 18 12 15.2 6.5 18l1.1-6.1L4 8l5.6-1.1z' fill='none' stroke='white' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/g%3E%3C/svg%3E">
+    <?php
+    /* favicon：图片优先，否则按 Logo 图标动态生成内联 SVG（渐变底 + 白色图形） */
+    $logoImg = trim((string)nova_option('logoImage', ''));
+    if ($logoImg !== '') {
+        echo '<link rel="icon" href="' . htmlspecialchars($logoImg) . '">' . "\n";
+    } else {
+        $icon = (string)nova_option('logoIcon', 'star');
+        $fav = nova_favicon_svg($icon);
+        echo '<link rel="icon" type="image/svg+xml" href="' . $fav . '">' . "\n";
+    }
+    ?>
     <link rel="alternate" type="application/rss+xml" title="RSS 2.0" href="<?php $this->options->feedUrl(); ?>">
     <link rel="alternate" type="application/atom+xml" title="Atom 1.0" href="<?php $this->options->feedUrl('/atom'); ?>">
-    <link rel="stylesheet" href="<?php $this->options->themeUrl('style.css?v=1.2.0'); ?>">
+    <link rel="stylesheet" href="<?php $this->options->themeUrl('style.css?v=1.3.3'); ?>">
     <?php $this->header(); ?>
     <script>
         // 首屏前读取暗色偏好，避免闪烁
@@ -30,13 +40,14 @@
     </script>
 </head>
 <body class="<?php if ($this->is('post') || $this->is('page')) echo 'is-single'; ?>">
+<div class="aurora" aria-hidden="true"><span></span><span></span><span></span></div>
 <a class="skip-link" href="#main">跳到正文</a>
 
 <header class="site-header" id="site-header">
     <div class="header-inner">
         <a class="brand" href="<?php $this->options->siteUrl(); ?>">
             <span class="brand-mark" aria-hidden="true">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.4 4.9L20 8l-3.6 3.9L17.5 18 12 15.2 6.5 18l1.1-6.1L4 8l5.6-1.1z"/></svg>
+                <?php echo nova_logo_html(20); ?>
             </span>
             <span class="brand-name"><?php $this->options->title(); ?></span>
         </a>

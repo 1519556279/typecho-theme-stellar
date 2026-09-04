@@ -8,6 +8,8 @@
     var $$ = function (s, c) { return Array.prototype.slice.call((c || doc).querySelectorAll(s)); };
 
     var bodyLocked = false;
+    /* 禁用浏览器自动滚动位置恢复：与 .reveal 入场动画位移冲突会导致刷新后页面自动往下跳一段 */
+    if ('scrollRestoration' in history) { history.scrollRestoration = 'manual'; }
     function lockBody(lock) {
         if (lock === bodyLocked) return;
         bodyLocked = lock;
@@ -460,26 +462,36 @@
 
     /* ---------- 互动：选中文字浮出复制 ---------- */
     function removeBubble() { var b = $('#sel-bubble'); if (b) b.remove(); }
-    doc.addEventListener('mouseup', function () {
+    doc.addEventListener('mouseup', function (e) {
+        var b = $('#sel-bubble');
+        /* 点击复制按钮本身时不重建（否则按钮被删、点击落空、复制失败） */
+        if (b && b.contains(e.target)) return;
         var sel = window.getSelection();
         var text = sel ? sel.toString().trim() : '';
         removeBubble();
-        if (text.length > 1 && sel.rangeCount) {
+        if (text.length > 1 && sel.rangeCount && !sel.isCollapsed) {
             var rect = sel.getRangeAt(0).getBoundingClientRect();
             if (rect.width === 0 && rect.height === 0) return;
-            var b = doc.createElement('div');
-            b.id = 'sel-bubble';
-            b.className = 'sel-bubble';
-            b.textContent = '复制';
-            b.style.left = (rect.left + rect.width / 2) + 'px';
-            b.style.top = (rect.top - 38) + 'px';
-            b.addEventListener('click', function () {
-                var done = function () { showToast('已复制选中内容'); removeBubble(); };
+            var nb = doc.createElement('button');
+            nb.type = 'button';
+            nb.id = 'sel-bubble';
+            nb.className = 'sel-bubble';
+            nb.textContent = '复制';
+            nb.style.left = (rect.left + rect.width / 2) + 'px';
+            nb.style.top = (rect.top - 38) + 'px';
+            /* 按下时保持文本选区（防止点击清除选区导致复制失败） */
+            nb.addEventListener('mousedown', function (ev) { ev.preventDefault(); });
+            nb.addEventListener('click', function () {
+                var done = function () {
+                    showToast('已复制选中内容');
+                    removeBubble();
+                    try { window.getSelection().removeAllRanges(); } catch (err) {}
+                };
                 if (navigator.clipboard && navigator.clipboard.writeText) {
                     navigator.clipboard.writeText(text).then(done, function () { fallbackCopy(text); done(); });
                 } else { fallbackCopy(text); done(); }
             });
-            doc.body.appendChild(b);
+            doc.body.appendChild(nb);
         }
     });
     doc.addEventListener('mousedown', function (e) {
@@ -487,6 +499,27 @@
         if (b && !b.contains(e.target)) removeBubble();
     });
     doc.addEventListener('keydown', function (e) { if (e.key === 'Escape') removeBubble(); });
+
+    /* ---------- 3D 视差卡片（tilt）：鼠标悬停时轻微倾斜 + 高光跟随 ---------- */
+    if (window.matchMedia('(hover: hover) and (pointer: fine)').matches
+        && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        $$('.post-card').forEach(function (card) {
+            card.classList.add('tiltable');
+            card.addEventListener('mousemove', function (e) {
+                var r = card.getBoundingClientRect();
+                var px = (e.clientX - r.left) / r.width - .5;
+                var py = (e.clientY - r.top) / r.height - .5;
+                card.style.setProperty('--rx', (-py * 5).toFixed(2) + 'deg');
+                card.style.setProperty('--ry', (px * 7).toFixed(2) + 'deg');
+                card.style.setProperty('--gx', ((e.clientX - r.left) / r.width * 100).toFixed(1) + '%');
+                card.style.setProperty('--gy', ((e.clientY - r.top) / r.height * 100).toFixed(1) + '%');
+            });
+            card.addEventListener('mouseleave', function () {
+                card.style.setProperty('--rx', '0deg');
+                card.style.setProperty('--ry', '0deg');
+            });
+        });
+    }
 
     buildToc();
 })();

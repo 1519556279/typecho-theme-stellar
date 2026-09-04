@@ -34,7 +34,7 @@
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <?php $this->footer(); ?>
-<script src="<?php $this->options->themeUrl('assets/js/main.js'); ?>?v=20260829"></script>
+<script src="<?php $this->options->themeUrl('assets/js/main.js'); ?>?v=20260903"></script>
 <script>
 /* 联系方式悬停提示：显示具体账号/地址（邮箱显示完整邮箱，社交链接显示主页地址） */
 (function () {

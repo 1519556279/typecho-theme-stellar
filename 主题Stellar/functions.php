@@ -95,6 +95,30 @@ function themeConfig($form)
 
     $showSidebar = new Typecho_Widget_Helper_Form_Element_Select('showSidebar', array('1' => '显示', '0' => '隐藏'), '1', _t('侧边栏'), _t('桌面端右侧边栏开关'));
     $form->addInput($showSidebar);
+
+    /* ---------- 站点 Logo ---------- */
+    $logoIcon = new Typecho_Widget_Helper_Form_Element_Select(
+        'logoIcon',
+        array(
+            'star'   => '五角星（默认）',
+            'letter' => '字母（站点名首字母）',
+            'heart'  => '爱心',
+            'bolt'   => '闪电',
+            'book'   => '书本',
+            'moon'   => '月亮',
+            'flower' => '花朵',
+        ),
+        'star',
+        _t('站点 Logo 图标'),
+        _t('导航栏与浏览器标签页显示的图标样式')
+    );
+    $form->addInput($logoIcon);
+
+    $logoImage = new Typecho_Widget_Helper_Form_Element_Text(
+        'logoImage', NULL, '', _t('Logo 图片地址'),
+        _t('填图片 URL 后优先使用图片（支持 png/jpg/svg），覆盖上方图标。留空则用图标。可上传图片后粘贴链接')
+    );
+    $form->addInput($logoImage);
 }
 
 /**
@@ -133,6 +157,70 @@ function nova_friends()
 function nova_option($key, $default = '')
 {
     return Typecho_Widget::widget('Widget_Options')->{$key} ?: $default;
+}
+
+/**
+ * 内置 Logo 图标 SVG（统一描边风格 + 固定 20px，与默认五角星一致）
+ */
+function nova_logo_svg($icon)
+{
+    $paths = array(
+        'star'   => '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.4 4.9L20 8l-3.6 3.9L17.5 18 12 15.2 6.5 18l1.1-6.1L4 8l5.6-1.1z"/></svg>',
+        'letter' => '', // 字母图标特殊处理（用首字母文字）
+        'heart'  => '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20.5S5.5 16.4 3.1 12.9C1.5 10.4 2.7 7 5.5 7c1.6 0 3 .9 3.7 2.3.4-.7 1-1.3 1.8-1.8.4-.2.7-.5 1-.5 2.8 0 4 3.4 2.4 6.4C18.5 16.4 12 20.5 12 20.5z"/></svg>',
+        'bolt'   => '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z"/></svg>',
+        'book'   => '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
+        'moon'   => '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>',
+        'flower' => '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 9a3 3 0 0 0 0-6 3 3 0 0 0 0 6zm0 6a3 3 0 0 0 0 6 3 3 0 0 0 0-6zM9 12a3 3 0 0 0-6 0 3 3 0 0 0 6 0zm6 0a3 3 0 0 0 6 0 3 3 0 0 0-6 0z"/></svg>',
+    );
+    return isset($paths[$icon]) ? $paths[$icon] : $paths['star'];
+}
+
+/**
+ * 站点 Logo 图标 HTML（图片优先，否则内置图标；letter 图标用站点名首字母）
+ */
+function nova_logo_html($size = 20)
+{
+    $img = trim((string)nova_option('logoImage', ''));
+    if ($img !== '') {
+        return '<img class="brand-logo-img" src="' . htmlspecialchars($img) . '" alt="' . htmlspecialchars(Typecho_Widget::widget('Widget_Options')->title) . '" width="' . $size . '" height="' . $size . '" style="width:' . $size . 'px;height:' . $size . 'px;border-radius:6px;object-fit:cover;display:block;">';
+    }
+    $icon = (string)nova_option('logoIcon', 'star');
+    if ($icon === 'letter') {
+        $ch = mb_substr(Typecho_Widget::widget('Widget_Options')->title, 0, 1, 'UTF-8');
+        return '<span class="brand-logo-letter" style="font-size:' . round($size * 1.1) . 'px;font-weight:800;line-height:1;">' . htmlspecialchars($ch) . '</span>';
+    }
+    return nova_logo_svg($icon);
+}
+
+/**
+ * favicon 内联 SVG：渐变圆角底 + 白色图形（data-uri 编码，供 <link rel="icon"> 使用）
+ */
+function nova_favicon_svg($icon)
+{
+    $title = Typecho_Widget::widget('Widget_Options')->title;
+    // 白色图形内容
+    if ($icon === 'letter') {
+        $ch = mb_substr($title, 0, 1, 'UTF-8');
+        $inner = '<text x="12" y="16.5" font-size="13" font-weight="800" fill="#fff" text-anchor="middle" font-family="-apple-system,Segoe UI,PingFang SC,sans-serif">' . htmlspecialchars($ch) . '</text>';
+    } else {
+        // 复用 nova_logo_svg 的图形，但改为白色描边/填充、放大居中
+        $svg = nova_logo_svg($icon);
+        // 提取 path，替换颜色为白色
+        $svg = str_replace('stroke="currentColor"', 'stroke="#ffffff"', $svg);
+        $svg = str_replace('fill="currentColor"', 'fill="#ffffff"', $svg);
+        $svg = str_replace('fill="none" stroke="#ffffff"', 'fill="none" stroke="#ffffff"', $svg);
+        $svg = preg_replace('#width="[^"]*" height="[^"]*"#', '', $svg);
+        $inner = $svg;
+    }
+    $raw = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">'
+        . '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">'
+        . '<stop offset="0" stop-color="#5b5bd6"/><stop offset="1" stop-color="#8b5cf6"/>'
+        . '</linearGradient></defs>'
+        . '<rect width="24" height="24" rx="5.5" fill="url(#g)"/>'
+        . $inner
+        . '</svg>';
+    return 'data:image/svg+xml,' . rawurlencode($raw);
 }
 
 /**
