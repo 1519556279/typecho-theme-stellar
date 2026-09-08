@@ -26,7 +26,7 @@
     ?>
     <link rel="alternate" type="application/rss+xml" title="RSS 2.0" href="<?php $this->options->feedUrl(); ?>">
     <link rel="alternate" type="application/atom+xml" title="Atom 1.0" href="<?php $this->options->feedUrl('/atom'); ?>">
-    <link rel="stylesheet" href="<?php $this->options->themeUrl('style.css?v=1.3.3'); ?>">
+    <link rel="stylesheet" href="<?php $this->options->themeUrl('style.css?v=1.3.4'); ?>">
     <?php $this->header(); ?>
     <script>
         // 首屏前读取暗色偏好，避免闪烁
