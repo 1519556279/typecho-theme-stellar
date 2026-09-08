@@ -167,8 +167,8 @@ h1, h2, h3, h4 { line-height: 1.3; margin: 0 0 .6em; font-weight: 700; }
 p { margin: 0 0 1em; }
 
 /* ============ 首屏 aurora 流动光斑背景（动态） ============
-   纯 transform 动画（合成器线程执行，主线程零重绘）+ 渐变自身柔边替代 filter: blur
-   —— 恢复"随时间流逝持续流动"的动态效果，同时避免大半径 blur 导致的全局掉帧 */
+   纯 transform + opacity 动画（合成器线程执行，主线程零重绘）+ 渐变自身柔边替代 filter: blur
+   —— 短周期大位移 + 明暗呼吸，肉眼可感知的持续流动，同时无 blur 重采样开销 */
 .aurora {
     position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden;
     background:
@@ -177,40 +177,38 @@ p { margin: 0 0 1em; }
 }
 .aurora span {
     position: absolute; border-radius: 50%;
-    will-change: transform; /* transform 动画自动提升合成层，走合成线程 */
+    will-change: transform, opacity; /* 合成层，transform/opacity 动画走合成线程 */
+    --ao1: .5; --ao1p: .85; --ao2: .46; --ao2p: .8; --ao3: .38; --ao3p: .68;
 }
 .aurora span:nth-child(1) {
     width: 640px; height: 640px; left: -10%; top: -22%;
-    background: radial-gradient(circle, color-mix(in srgb, var(--accent) 42%, transparent) 0, transparent 60%);
-    opacity: .55;
-    animation: auroraFloat1 24s ease-in-out infinite;
+    background: radial-gradient(circle, color-mix(in srgb, var(--accent) 46%, transparent) 0, transparent 60%);
+    animation: auroraFloat1 9s ease-in-out infinite;
 }
 .aurora span:nth-child(2) {
     width: 580px; height: 580px; right: -8%; top: 2%;
-    background: radial-gradient(circle, color-mix(in srgb, var(--accent-2) 38%, transparent) 0, transparent 60%);
-    opacity: .5;
-    animation: auroraFloat2 29s ease-in-out infinite;
+    background: radial-gradient(circle, color-mix(in srgb, var(--accent-2) 42%, transparent) 0, transparent 60%);
+    animation: auroraFloat2 12s ease-in-out infinite;
 }
 .aurora span:nth-child(3) {
     width: 520px; height: 520px; left: 36%; bottom: -24%;
-    background: radial-gradient(circle, color-mix(in srgb, #22d3ee 30%, transparent) 0, transparent 62%);
-    opacity: .38;
-    animation: auroraFloat3 34s ease-in-out infinite;
+    background: radial-gradient(circle, color-mix(in srgb, #22d3ee 32%, transparent) 0, transparent 62%);
+    animation: auroraFloat3 15s ease-in-out infinite;
 }
 @keyframes auroraFloat1 {
-    0%, 100% { transform: translate(0, 0) scale(1); }
-    50% { transform: translate(170px, 110px) scale(1.18); }
+    0%, 100% { transform: translate(0, 0) scale(1); opacity: var(--ao1); }
+    50% { transform: translate(280px, 160px) scale(1.3); opacity: var(--ao1p); }
 }
 @keyframes auroraFloat2 {
-    0%, 100% { transform: translate(0, 0) scale(1); }
-    50% { transform: translate(-150px, 130px) scale(1.16); }
+    0%, 100% { transform: translate(0, 0) scale(1); opacity: var(--ao2); }
+    50% { transform: translate(-250px, 180px) scale(1.26); opacity: var(--ao2p); }
 }
 @keyframes auroraFloat3 {
-    0%, 100% { transform: translate(0, 0) scale(1); }
-    50% { transform: translate(110px, -140px) scale(1.2); }
+    0%, 100% { transform: translate(0, 0) scale(1); opacity: var(--ao3); }
+    50% { transform: translate(200px, -220px) scale(1.32); opacity: var(--ao3p); }
 }
 @media (prefers-reduced-motion: reduce) {
-    .aurora span { animation: none; }
+    .aurora span { animation: none; opacity: var(--ao1p); }
 }
 /* 暗色：光斑压暗降饱和，避免亮斑刺眼、糊掉深色层次 */
 [data-theme="dark"] .aurora {
@@ -218,17 +216,17 @@ p { margin: 0 0 1em; }
         radial-gradient(90% 70% at 8% 0%, color-mix(in srgb, var(--accent) 6%, transparent), transparent 60%),
         radial-gradient(80% 60% at 100% 100%, color-mix(in srgb, var(--accent-2) 5%, transparent), transparent 60%);
 }
+[data-theme="dark"] .aurora span {
+    --ao1: .34; --ao1p: .55; --ao2: .3; --ao2p: .5; --ao3: .24; --ao3p: .4;
+}
 [data-theme="dark"] .aurora span:nth-child(1) {
-    background: radial-gradient(circle, color-mix(in srgb, var(--accent) 26%, transparent) 0, transparent 60%);
-    opacity: .4;
+    background: radial-gradient(circle, color-mix(in srgb, var(--accent) 30%, transparent) 0, transparent 60%);
 }
 [data-theme="dark"] .aurora span:nth-child(2) {
-    background: radial-gradient(circle, color-mix(in srgb, var(--accent-2) 22%, transparent) 0, transparent 60%);
-    opacity: .36;
+    background: radial-gradient(circle, color-mix(in srgb, var(--accent-2) 26%, transparent) 0, transparent 60%);
 }
 [data-theme="dark"] .aurora span:nth-child(3) {
-    background: radial-gradient(circle, color-mix(in srgb, #1e6e8a 16%, transparent) 0, transparent 62%);
-    opacity: .24;
+    background: radial-gradient(circle, color-mix(in srgb, #1e6e8a 18%, transparent) 0, transparent 62%);
 }
 
 /* ============ 3D 视差卡片（tilt） ============ */
@@ -290,12 +288,12 @@ p { margin: 0 0 1em; }
     height: calc(var(--header-h) + env(safe-area-inset-top, 0px));
     padding-top: env(safe-area-inset-top, 0px);
     background: color-mix(in srgb, var(--bg) 78%, transparent);
-    -webkit-backdrop-filter: blur(10px) saturate(1.4);
-    backdrop-filter: blur(10px) saturate(1.4);
+    -webkit-backdrop-filter: blur(8px) saturate(1.4);
+    backdrop-filter: blur(8px) saturate(1.4);
     border-bottom: 1px solid var(--line);
     transition: background .35s ease, border-color .35s ease, box-shadow .3s ease;
 }
-.site-header.scrolled { box-shadow: 0 4px 24px rgba(20, 24, 46, .08); backdrop-filter: blur(12px) saturate(1.5); -webkit-backdrop-filter: blur(12px) saturate(1.5); background: color-mix(in srgb, var(--bg) 88%, transparent); }
+.site-header.scrolled { box-shadow: 0 4px 24px rgba(20, 24, 46, .08); backdrop-filter: blur(10px) saturate(1.5); -webkit-backdrop-filter: blur(10px) saturate(1.5); background: color-mix(in srgb, var(--bg) 88%, transparent); }
 .header-inner {
     width: min(var(--content-w), 100% - 40px); margin-inline: auto; height: var(--header-h);
     display: flex; align-items: center; gap: 24px;
@@ -342,7 +340,8 @@ p { margin: 0 0 1em; }
 /* ============ 阅读进度条 ============ */
 .reading-progress {
     position: fixed; top: 0; left: 0; z-index: 150;
-    height: 3px; width: 0;
+    height: 3px; width: 100%;
+    transform: scaleX(0); transform-origin: left; /* transform 动画不触发 layout（原 width 每帧重排） */
     background: var(--accent-grad);
     box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 60%, transparent);
     opacity: 0; transition: opacity .3s ease;

@@ -124,7 +124,7 @@
         var pct = h > 0 ? (y / h) * 100 : 0;
         if (header) header.classList.toggle('scrolled', y > 8);
         if (progress) {
-            progress.style.width = pct + '%';
+            progress.style.transform = 'scaleX(' + (pct / 100) + ')'; /* 合成线程，不再每帧改 width 触发 layout */
             progress.classList.toggle('show', y > 120 && pct < 99.5);
         }
         if (backTop) backTop.classList.toggle('show', y > 480);
