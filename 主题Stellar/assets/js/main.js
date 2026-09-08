@@ -505,16 +505,23 @@
         && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
         $$('.post-card').forEach(function (card) {
             card.classList.add('tiltable');
+            var raf = null;
             card.addEventListener('mousemove', function (e) {
-                var r = card.getBoundingClientRect();
-                var px = (e.clientX - r.left) / r.width - .5;
-                var py = (e.clientY - r.top) / r.height - .5;
-                card.style.setProperty('--rx', (-py * 5).toFixed(2) + 'deg');
-                card.style.setProperty('--ry', (px * 7).toFixed(2) + 'deg');
-                card.style.setProperty('--gx', ((e.clientX - r.left) / r.width * 100).toFixed(1) + '%');
-                card.style.setProperty('--gy', ((e.clientY - r.top) / r.height * 100).toFixed(1) + '%');
+                /* rAF 节流：只处理每帧最新坐标，避免 mousemove 高频触发强制 reflow */
+                if (raf) return;
+                raf = requestAnimationFrame(function () {
+                    raf = null;
+                    var r = card.getBoundingClientRect();
+                    var px = (e.clientX - r.left) / r.width - .5;
+                    var py = (e.clientY - r.top) / r.height - .5;
+                    card.style.setProperty('--rx', (-py * 5).toFixed(2) + 'deg');
+                    card.style.setProperty('--ry', (px * 7).toFixed(2) + 'deg');
+                    card.style.setProperty('--gx', ((e.clientX - r.left) / r.width * 100).toFixed(1) + '%');
+                    card.style.setProperty('--gy', ((e.clientY - r.top) / r.height * 100).toFixed(1) + '%');
+                });
             });
             card.addEventListener('mouseleave', function () {
+                if (raf) { cancelAnimationFrame(raf); raf = null; }
                 card.style.setProperty('--rx', '0deg');
                 card.style.setProperty('--ry', '0deg');
             });
