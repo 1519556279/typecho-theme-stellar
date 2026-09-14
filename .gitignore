@@ -42,3 +42,6 @@ stellar-ai/
 文章/
 scripts/
 截图/
+
+# 项目本地配置（不入仓库）
+reasonix.toml
