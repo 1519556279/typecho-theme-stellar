@@ -10,6 +10,13 @@ PROJECT-MEMORY.md
 .bt-cookie.txt
 .bt-*
 
+# 独立插件/主题仓库（各自独立 git 管理，不入主仓库）
+stellar-ads/
+stellar-analytics/
+typecho-ad-manager/
+typecho-baidu-push/
+typecho-site-analytics/
+
 # 会话/宿主元数据
 .reasonix/
 
@@ -27,3 +34,11 @@ router.php
 Thumbs.db
 desktop.ini
 
+
+# 本地工作目录（各自独立 git 或本地内容，不入主仓库）
+stellar-admin/
+stellar-ai/
+博客系统/
+文章/
+scripts/
+截图/
