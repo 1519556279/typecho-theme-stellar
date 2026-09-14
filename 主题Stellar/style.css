@@ -337,6 +337,26 @@ p { margin: 0 0 1em; }
 [data-theme="dark"] #theme-toggle .icon-sun { display: none; }
 [data-theme="dark"] #theme-toggle .icon-moon { display: block; }
 
+/* ============ 语言切换（翻译） ============ */
+.lang-switch { position: relative; }
+.lang-menu {
+    position: absolute; top: calc(100% + 8px); right: 0; z-index: 100;
+    min-width: 150px; padding: 6px; border-radius: 12px;
+    background: var(--card); border: 1px solid var(--line); box-shadow: var(--shadow-lg, 0 12px 32px rgba(0,0,0,.14));
+    display: flex; flex-direction: column;
+}
+.lang-menu button {
+    display: block; width: 100%; text-align: left; padding: 9px 12px;
+    border: none; background: none; color: var(--text-2); font-size: 14px;
+    border-radius: 8px; cursor: pointer; font-family: inherit;
+}
+.lang-menu button:hover { background: var(--bg); color: var(--accent); }
+.lang-menu button.active { color: var(--accent); font-weight: 600; background: var(--bg); }
+.lang-credit {
+    margin-top: 4px; padding: 7px 12px 3px; border-top: 1px solid var(--line);
+    font-size: 11px; color: var(--text-3); text-align: center;
+}
+
 /* ============ 阅读进度条 ============ */
 .reading-progress {
     position: fixed; top: 0; left: 0; z-index: 150;
@@ -538,8 +558,12 @@ p { margin: 0 0 1em; }
     transition: all .2s ease;
 }
 .pagination a:hover { border-color: var(--accent); color: var(--accent); box-shadow: var(--shadow-sm); }
-.pagination .current { background: var(--accent-grad); border-color: transparent; color: #fff; }
+.pagination .current { background: transparent; }
+.pagination .current a { background: var(--accent-grad); border-color: transparent; color: #fff; border-radius: 10px; }
 .pagination .page-numbers { display: inline-flex; gap: 8px; flex-wrap: wrap; }
+.pagination ol.page-numbers { list-style: none; padding: 0; margin: 0; }
+.pagination ol.page-numbers li { display: inline-flex; margin: 0; }
+.pagination .next, .pagination .prev { margin: 0 2px; }
 
 /* ============ 归档页头 ============ */
 .archive-head { margin-bottom: 30px; }
@@ -564,6 +588,8 @@ p { margin: 0 0 1em; }
 .single-meta { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text-3); margin-bottom: 12px; flex-wrap: wrap; }
 .meta-dot { opacity: .5; }
 .single-title { font-size: clamp(26px, 4vw, 38px); font-weight: 800; letter-spacing: -.6px; margin: 0 0 14px; }
+.single-cover { margin: 4px 0 14px; }
+.single-cover img { width: 100%; max-height: 420px; object-fit: cover; border-radius: 14px; display: block; }
 .single-tags { display: flex; gap: 8px; flex-wrap: wrap; }
 .single-tags a {
     font-size: 13px; padding: 4px 12px; border-radius: 999px;

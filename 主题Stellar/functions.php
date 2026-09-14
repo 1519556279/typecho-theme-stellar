@@ -45,6 +45,18 @@ function nova_related_posts($archive, $limit = 2)
 }
 
 /**
+ * 文章编辑页自定义字段：封面图 URL（Typecho 1.3 官方字段机制，后台写文章页自动显示）
+ */
+function themeFields($layout)
+{
+    $cover = new \Typecho\Widget\Helper\Form\Element\Text(
+        'cover', null, null, _t('封面图 URL'),
+        _t('文章页与列表页展示的封面，留空则自动取正文第一张图片')
+    );
+    $layout->addItem($cover);
+}
+
+/**
  * 后台外观设置面板
  */
 function themeConfig($form)
@@ -244,18 +256,18 @@ function nova_reading_time($content)
 }
 
 /**
- * 提取文章首图（无则返回空）
+ * 文章封面：优先使用自定义字段 cover（后台「写文章 → 自定义字段」设置），
+ * 未设置时自动提取正文第一张图片作为封面
  */
 function nova_cover($archive)
 {
-    $content = $archive->content;
-    if (preg_match('/<img[^>]+src=["\']([^"\']+)["\']/i', $content, $m)) {
-        return $m[1];
-    }
-    // 附件字段
     $attach = $archive->fields->cover;
     if (!empty($attach)) {
         return $attach;
+    }
+    $content = $archive->content;
+    if (preg_match('/<img[^>]+src=["\']([^"\']+)["\']/i', $content, $m)) {
+        return $m[1];
     }
     return '';
 }

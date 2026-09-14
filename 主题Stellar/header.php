@@ -26,7 +26,7 @@
     ?>
     <link rel="alternate" type="application/rss+xml" title="RSS 2.0" href="<?php $this->options->feedUrl(); ?>">
     <link rel="alternate" type="application/atom+xml" title="Atom 1.0" href="<?php $this->options->feedUrl('/atom'); ?>">
-    <link rel="stylesheet" href="<?php $this->options->themeUrl('style.css?v=1.3.5'); ?>">
+    <link rel="stylesheet" href="<?php $this->options->themeUrl('style.css?v=1.3.6'); ?>">
     <?php $this->header(); ?>
     <script>
         // 首屏前读取暗色偏好，避免闪烁
@@ -58,10 +58,30 @@
             <?php while ($pages->next()): ?>
                 <a href="<?php $pages->permalink(); ?>"<?php if ($this->is('page', $pages->slug)) echo ' class="active"'; ?>><?php $pages->title(); ?></a>
             <?php endwhile; ?>
+            <?php $this->widget('Widget_Metas_Category_List')->to($navCats); ?>
+            <?php while ($navCats->next()): if ($navCats->slug === 'default') continue; ?>
+                <a href="<?php $navCats->permalink(); ?>"<?php if ($this->is('category', $navCats->slug)) echo ' class="active"'; ?>><?php $navCats->name(); ?></a>
+            <?php endwhile; ?>
             <a href="<?php $this->options->feedUrl(); ?>" target="_blank" rel="noopener"><?php _e('RSS'); ?></a>
         </nav>
 
         <div class="header-actions">
+            <div class="lang-switch" id="lang-switch">
+                <button class="icon-btn" id="lang-btn" type="button" aria-label="切换语言" title="翻译 / Translate">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                </button>
+                <div class="lang-menu" id="lang-menu" hidden>
+                    <button type="button" data-lang="chinese_simplified" class="active">简体中文</button>
+                    <button type="button" data-lang="english">English</button>
+                    <button type="button" data-lang="japanese">日本語</button>
+                    <button type="button" data-lang="korean">한국어</button>
+                    <button type="button" data-lang="french">Français</button>
+                    <button type="button" data-lang="german">Deutsch</button>
+                    <button type="button" data-lang="spanish">Español</button>
+                    <button type="button" data-lang="russian">Русский</button>
+                    <div class="lang-credit">翻译 by translate.js</div>
+                </div>
+            </div>
             <button class="icon-btn" id="theme-toggle" type="button" aria-label="切换主题模式" title="切换主题模式">
                 <svg class="icon-sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4l1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
                 <svg class="icon-moon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>

@@ -35,6 +35,53 @@
 
 <?php $this->footer(); ?>
 <script src="<?php $this->options->themeUrl('assets/js/main.js'); ?>?v=20260909"></script>
+<script src="<?php $this->options->themeUrl('assets/js/translate.js'); ?>?v=3.18.66"></script>
+<script>
+/* 整站多语言翻译（translate.js，免费 giteeAI 大模型翻译通道，无需 API Key） */
+(function () {
+    if (typeof translate === 'undefined') return;
+    /* 修复升级后清一次旧翻译缓存（旧通道可能缓存了坏的翻译/分页），只清一次避免重复丢缓存 */
+    try {
+        if (!localStorage.getItem('sp_t_cache_cleared')) {
+            try { if (window.indexedDB) indexedDB.deleteDatabase('translate.js'); } catch (e) {}
+            try { localStorage.removeItem('translate.js'); } catch (e) {}
+            localStorage.setItem('sp_t_cache_cleared', '1');
+        }
+    } catch (e) {}
+    translate.language.setLocal('chinese_simplified');
+    /* giteeAI 通道线上实测可连通（200），siliconflow 节点超时不可用 */
+    translate.service.use('giteeAI');
+    /* 语言菜单与分页器不参与翻译：菜单保持中文方便切回、分页避免数字/符号乱码 */
+    if (translate.ignore && translate.ignore.class) {
+        translate.ignore.class.push('lang-menu');
+        translate.ignore.class.push('pagination');
+        translate.ignore.class.push('comment-page');
+    }
+    /* 禁用 translate.js 内建语言选择下拉（左下角固定），使用顶部自建按钮 */
+    if (translate.selectLanguageTag) translate.selectLanguageTag.show = false;
+    translate.execute();
+    var lastLang = 'chinese_simplified';
+    var btn = document.getElementById('lang-btn');
+    var menu = document.getElementById('lang-menu');
+    if (!btn || !menu) return;
+    btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        menu.hidden = !menu.hidden;
+    });
+    menu.addEventListener('click', function (e) {
+        var b = e.target && e.target.closest ? e.target.closest('button[data-lang]') : null;
+        if (!b) return;
+        var lang = b.getAttribute('data-lang');
+        menu.hidden = true;
+        if (lang === lastLang) return;
+        lastLang = lang;
+        try { translate.changeLanguage(lang); } catch (err) {}
+        var items = menu.querySelectorAll('button[data-lang]');
+        for (var i = 0; i < items.length; i++) items[i].classList.toggle('active', items[i] === b);
+    });
+    document.addEventListener('click', function () { menu.hidden = true; });
+})();
+</script>
 <script>
 /* 联系方式悬停提示：显示具体账号/地址（邮箱显示完整邮箱，社交链接显示主页地址） */
 (function () {
