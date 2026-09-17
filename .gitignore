@@ -45,3 +45,6 @@ scripts/
 
 # 项目本地配置（不入仓库）
 reasonix.toml
+
+_已清理旧版本/
+
